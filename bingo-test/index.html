@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bingo Trekker 2.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="bingo-common.js"></script>
+<script src="vendor-jsqr.min.js"></script>
+<script src="vendor-qrcode.min.js"></script>
+<style>
+  :root{
+    --navy-deep: #0a1730;
+    --navy-panel: #102544;
+    --navy-panel-2: #0d1e3a;
+    --red: #c8203a;
+    --red-dark: #8f1526;
+    --gold: #d4af37;
+    --gold-soft: #e8cd6f;
+    --cream: #f4efe3;
+    --muted: #7c8fae;
+    --line: rgba(212,175,55,0.25);
+    --green: #2fae66;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(ellipse at 50% 0%, #142a4d 0%, var(--navy-deep) 60%);
+    color: var(--cream);
+    font-family:'Inter', sans-serif;
+    overflow-y:auto;
+  }
+  #app{ width:100vw; height:100vh; display:flex; }
+
+  /* ---------- Portrait hint ---------- */
+  #rotateHint{
+    display:none;
+    position:fixed; inset:0; z-index:999;
+    background: var(--navy-deep);
+    color:var(--cream);
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:16px; padding:32px;
+  }
+  #rotateHint svg{ width:64px; height:64px; animation: rotatePulse 1.6s ease-in-out infinite; }
+  @keyframes rotatePulse{ 0%,100%{transform:rotate(0deg);} 50%{transform:rotate(90deg);} }
+  @media (orientation: portrait) and (max-width: 900px){
+    #rotateHint{ display:flex; }
+    #app{ display:none; }
+  }
+
+  /* ---------- Settings screen ---------- */
+  #settingsScreen{
+    width:100%; height:100%;
+    display:flex; align-items:center; justify-content:center;
+    overflow-y:auto;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(200,32,58,0.12), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(212,175,55,0.10), transparent 40%);
+  }
+  .settings-card{
+    width:min(560px, 90vw);
+    max-height:94vh;
+    overflow-y:auto;
+    margin: 8px 0;
+    background: linear-gradient(180deg, var(--navy-panel), var(--navy-panel-2));
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:clamp(16px,3vw,40px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  @media (max-height: 480px){
+    .brand{ margin-bottom:2px; }
+    .brand .dot{ width:10px; height:10px; }
+    .brand span{ font-size:10px; }
+    h1{ font-size: clamp(20px,4vw,28px); margin: 4px 0 12px 0; }
+    .field{ margin-bottom:10px; }
+    .field label{ font-size:11px; margin-bottom:4px; }
+    .field .hint{ font-size:11px; margin-top:3px; }
+    .num-input button{ width:36px; height:36px; font-size:17px; }
+    input[type=number]{ font-size:18px; padding:7px 6px; }
+    .start-btn{ padding:12px; font-size:15px; margin-top:4px; }
+  }
+  .brand{
+    display:flex; align-items:center; gap:14px; margin-bottom:6px;
+  }
+  .brand .dot{
+    width:14px; height:14px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 55%, var(--red-dark) 100%);
+    box-shadow: 0 0 12px var(--gold);
+  }
+  .brand span{
+    font-family:'Oswald', sans-serif; letter-spacing:0.28em; font-size:12px;
+    color:var(--gold-soft); text-transform:uppercase;
+  }
+  h1{
+    font-family:'Anton', sans-serif;
+    font-weight:400;
+    font-size:clamp(28px,4.5vw,44px);
+    letter-spacing:0.02em;
+    margin: 6px 0 24px 0;
+    color: var(--cream);
+  }
+  .field{ margin-bottom:20px; }
+  .field label{
+    display:block; font-family:'Oswald', sans-serif; font-size:13px;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;
+  }
+  .field .hint{ font-size:12.5px; color:var(--muted); margin-top:6px; }
+  .num-input{
+    display:flex; align-items:center; gap:10px;
+  }
+  .num-input button{
+    width:44px; height:44px; border-radius:10px; border:1px solid var(--line);
+    background: var(--navy-deep); color:var(--gold-soft); font-size:20px; font-weight:700;
+    cursor:pointer;
+  }
+  .num-input button:active{ transform: scale(0.94); }
+  input[type=number]{
+    flex:1; text-align:center;
+    background: var(--navy-deep);
+    border:1px solid var(--line);
+    color:var(--cream);
+    font-family:'Oswald', sans-serif;
+    font-size:22px; font-weight:600;
+    border-radius:10px; padding:10px 8px;
+    -moz-appearance: textfield;
+  }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .start-btn{
+    width:100%; margin-top:10px;
+    background: linear-gradient(180deg, var(--red) 0%, var(--red-dark) 100%);
+    color:var(--cream);
+    border:none; border-radius:14px;
+    padding:16px; font-family:'Oswald', sans-serif; font-weight:700;
+    font-size:18px; letter-spacing:0.06em; text-transform:uppercase;
+    cursor:pointer;
+    box-shadow: 0 10px 24px rgba(200,32,58,0.35);
+  }
+  .start-btn:active{ transform: scale(0.98); }
+  .error{ color:#ff8484; font-size:13px; margin-top:8px; min-height:16px; }
+
+  /* ---------- Game screen ---------- */
+  #gameScreen{ display:none; width:100%; height:100%; }
+  #gameScreen.active{ display:flex; }
+
+  .left-panel{
+    width:44%; height:100%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap: clamp(10px, 2vh, 22px);
+    padding: 3vh 2vw;
+    position:relative;
+    overflow-y:auto;
+    border-right: 1px solid var(--line);
+    background: radial-gradient(ellipse at 50% 35%, rgba(200,32,58,0.10), transparent 55%);
+  }
+
+  .cage{
+    position:relative;
+    width: clamp(180px, 30vh, 340px);
+    aspect-ratio: 1 / 1;
+    flex-shrink: 0;
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+  }
+  .ring-svg{
+    position:absolute; inset:0; width:100%; height:100%;
+    transform: rotate(-90deg);
+    filter: drop-shadow(0 0 6px rgba(212,175,55,0.25));
+  }
+  .ring-track{ fill:none; stroke: rgba(212,175,55,0.18); stroke-width:3; }
+  .ring-progress{
+    fill:none; stroke: var(--gold); stroke-width:4; stroke-linecap:round;
+    stroke-dasharray: 289.03; stroke-dashoffset:0;
+  }
+  .ball{
+    width: 78%; height:78%;
+    aspect-ratio: 1 / 1;
+    border-radius:50%;
+    background: radial-gradient(circle at 32% 28%, #ff5b6e 0%, var(--red) 45%, var(--red-dark) 100%);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.55), inset -8px -8px 20px rgba(0,0,0,0.35), inset 8px 8px 16px rgba(255,255,255,0.15);
+    transition: transform 0.25s ease;
+  }
+  .ball.pop{ animation: ballPop 0.55s ease; }
+  @keyframes ballPop{
+    0%{ transform: scale(0.4) rotate(-15deg); opacity:0; }
+    55%{ transform: scale(1.12) rotate(8deg); opacity:1; }
+    75%{ transform: scale(0.96) rotate(-3deg); }
+    100%{ transform: scale(1) rotate(0deg); }
+  }
+  .ball-number{
+    font-family:'Anton', sans-serif;
+    font-size: clamp(48px, 11vh, 130px);
+    color: var(--cream);
+    text-shadow: 0 3px 0 rgba(0,0,0,0.4);
+    line-height:1;
+  }
+  .ball-placeholder{
+    font-family:'Oswald', sans-serif;
+    font-size: clamp(16px, 2.4vh, 22px);
+    color: rgba(244,239,227,0.75);
+    letter-spacing:0.05em;
+    text-align:center;
+    padding: 0 10%;
+  }
+
+  .status-line{
+    font-family:'Oswald', sans-serif;
+    font-size: clamp(13px, 1.7vh, 16px);
+    color: var(--gold-soft);
+    letter-spacing:0.1em; text-transform:uppercase;
+    text-align:center;
+    min-height: 20px;
+  }
+
+  .trail{
+    display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;
+    max-width: 90%;
+  }
+  .trail .chip{
+    width:38px; height:38px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--navy-panel);
+    border:1px solid var(--line);
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:14px;
+    color: var(--gold-soft);
+  }
+
+  .controls{
+    display:flex; gap:12px; flex-wrap:wrap; justify-content:center;
+    width:100%;
+  }
+  .btn{
+    flex:1 1 auto; min-width:120px;
+    font-family:'Oswald', sans-serif; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+    font-size: clamp(13px, 1.8vh, 16px);
+    padding: clamp(10px,1.6vh,16px) 14px;
+    border-radius: 12px; border:1px solid var(--line);
+    background: var(--navy-panel);
+    color: var(--cream);
+    cursor:pointer;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn.primary{
+    background: linear-gradient(180deg, var(--red), var(--red-dark));
+    border-color: transparent;
+    box-shadow: 0 8px 20px rgba(200,32,58,0.3);
+  }
+  .btn.gold{
+    background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+    color: var(--navy-deep);
+    border-color: transparent;
+  }
+  .btn.ghost{
+    background: transparent;
+  }
+  .btn[disabled]{ opacity:0.4; cursor:not-allowed; }
+  .btn.auto-on{
+    background: linear-gradient(180deg, #2fae66, #1c7e47);
+    border-color: transparent;
+  }
+
+  .right-panel{
+    width:56%; height:100%;
+    display:flex; flex-direction:column;
+    padding: clamp(12px,2vh,24px) clamp(14px,2vw,28px);
+  }
+  .right-header{
+    display:flex; align-items:baseline; justify-content:space-between; margin-bottom: 12px;
+  }
+  .right-header h2{
+    font-family:'Oswald', sans-serif; font-size: clamp(14px,1.8vh,18px);
+    letter-spacing:0.1em; text-transform:uppercase; color:var(--gold-soft); margin:0; font-weight:600;
+  }
+  .right-header .count{
+    font-family:'Oswald', sans-serif; font-size: clamp(12px,1.5vh,15px); color:var(--muted);
+  }
+  .grid-wrap{
+    flex:1;
+    overflow:hidden;
+    display:flex;
+    padding-right:4px;
+  }
+  #numberGrid{
+    display:grid;
+    margin:auto;
+    justify-content:center;
+    align-content:center;
+  }
+  .cell{
+    display:flex; align-items:center; justify-content:center;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background: rgba(16,37,68,0.5);
+    color: var(--muted);
+    font-family:'Oswald', sans-serif; font-weight:600;
+    transition: all 0.25s ease;
+  }
+  .cell.called{
+    background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+    color: var(--navy-deep);
+    border-color: transparent;
+    box-shadow: 0 4px 10px rgba(212,175,55,0.35);
+  }
+  .cell.current{
+    outline: 2px solid var(--red);
+    outline-offset:2px;
+    animation: cellFlash 0.6s ease;
+  }
+  @keyframes cellFlash{ 0%{ transform: scale(0.8);} 60%{transform: scale(1.15);} 100%{transform:scale(1);} }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius:8px; }
+
+  /* ---------- Kaarten-link op instellingenscherm ---------- */
+  .cards-link{
+    display:block; text-align:center; margin-top:14px;
+    font-family:'Oswald', sans-serif; font-size:13px; letter-spacing:0.06em; text-transform:uppercase;
+    color: var(--gold-soft); text-decoration:none; border:1px solid var(--line); border-radius:12px; padding:12px;
+  }
+  .cards-link:active{ transform: scale(0.98); }
+
+  /* ---------- Check-modal ---------- */
+  #checkOverlay{
+    display:none; position:fixed; inset:0; z-index:600;
+    background: rgba(6,13,26,0.82);
+    align-items:center; justify-content:center; padding:16px;
+  }
+  #checkOverlay.active{ display:flex; }
+  .check-card{
+    width:min(440px, 94vw); max-height:94vh; overflow-y:auto;
+    background: linear-gradient(180deg, var(--navy-panel), var(--navy-panel-2));
+    border:1px solid var(--line); border-radius:20px;
+    padding: clamp(16px,3vw,26px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  }
+  .check-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .check-header h3{ font-size:20px; color:var(--cream); }
+  .check-close{
+    width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
+    background: var(--navy-deep); color:var(--gold-soft); font-size:18px; cursor:pointer;
+  }
+  .check-tabs{ display:flex; gap:8px; margin-bottom:16px; }
+  .check-tab{
+    flex:1; text-align:center; padding:10px; border-radius:10px; border:1px solid var(--line);
+    background: var(--navy-deep); color:var(--muted);
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:12.5px; letter-spacing:0.05em; text-transform:uppercase;
+    cursor:pointer;
+  }
+  .check-tab.active{ background: linear-gradient(180deg, var(--gold-soft), var(--gold)); color:var(--navy-deep); border-color:transparent; }
+
+  .scan-video-wrap{
+    position:relative; width:100%; aspect-ratio:1/1; border-radius:16px; overflow:hidden;
+    background:#000; border:2px solid var(--gold); margin-bottom:14px;
+  }
+  .scan-video-wrap video{ width:100%; height:100%; object-fit:cover; }
+  .scan-frame{
+    position:absolute; inset:12%; border:2px dashed var(--gold-soft); border-radius:12px; pointer-events:none;
+  }
+  .scan-hint{ text-align:center; font-size:13px; color:var(--muted); margin-bottom:6px; }
+
+  .result-box{
+    border-radius:14px; padding:18px; text-align:center; margin-bottom:14px;
+    border:1px solid var(--line); background: var(--navy-deep);
+  }
+  .result-box.win{ background: linear-gradient(180deg, rgba(47,174,102,0.25), rgba(47,174,102,0.08)); border-color: var(--green); }
+  .result-title{ font-family:'Anton', sans-serif; font-size:26px; margin-bottom:8px; }
+  .result-rows{ display:flex; gap:10px; justify-content:center; font-family:'Oswald',sans-serif; font-size:13px; }
+  .result-rows span{ padding:6px 10px; border-radius:8px; border:1px solid var(--line); color:var(--muted); }
+  .result-rows span.ok{ color: var(--navy-deep); background: var(--gold); border-color:transparent; }
+
+  .check-grid{
+    display:grid; grid-template-columns: repeat(9, minmax(0,1fr)); gap:3px;
+    margin-top: 14px; width:100%;
+  }
+  .check-cell{
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    border-radius:4px; font-family:'Oswald',sans-serif; font-weight:700;
+    font-size: clamp(9px, 2.6vw, 13px); min-width:0; min-height:0; box-sizing:border-box;
+  }
+  .check-cell.empty{ background:transparent; }
+  .check-cell.hit{ background: linear-gradient(180deg, #4ad080, var(--green)); color:#0a1730; }
+  .check-cell.miss{ background: linear-gradient(180deg, #ff5b6e, var(--red-dark)); color:#fff; }
+
+  .variant-select{ display:flex; flex-direction:column; gap:8px; }
+  .variant-opt{
+    text-align:left; padding:10px 14px; border-radius:10px;
+    border:1px solid var(--line); background:transparent; color:var(--cream); cursor:pointer;
+    font-family:'Oswald',sans-serif;
+  }
+  .variant-opt .v-title{ font-weight:700; font-size:13px; letter-spacing:0.03em; }
+  .variant-opt .v-sub{ font-size:11px; color:var(--muted); margin-top:2px; font-family:'Inter',sans-serif; }
+  .variant-opt.active{ border-color: var(--gold); background: linear-gradient(180deg, rgba(212,175,55,0.18), rgba(212,175,55,0.05)); }
+  .variant-opt.active .v-title{ color: var(--gold-soft); }
+
+  .lang-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .lang-btn{
+    flex:1 1 28%; min-width:88px; text-align:center; padding:9px 8px; border-radius:10px;
+    border:1px solid var(--line); background:var(--navy-deep); color:var(--muted);
+    font-family:'Oswald',sans-serif; font-weight:600; font-size:12px; cursor:pointer;
+  }
+  .lang-btn.active{ background: linear-gradient(180deg, var(--gold-soft), var(--gold)); color:var(--navy-deep); border-color:transparent; }
+  .voice-select{
+    width:100%; padding:10px; border-radius:10px; border:1px solid var(--line);
+    background:var(--navy-deep); color:var(--cream); font-size:13.5px;
+  }
+  .speech-config-link{
+    display:inline-block; margin-top:8px; font-size:12.5px; color:var(--gold-soft);
+    text-decoration:none; border-bottom:1px dashed var(--gold-soft);
+  }
+
+  #qrStateBox{ display:flex; flex-direction:column; align-items:center; gap:12px; }
+  #qrStateCanvas{ background:#fff; padding:14px; border-radius:14px; }
+  #qrStateCount{ font-family:'Oswald', sans-serif; color:var(--gold-soft); font-size:14px; letter-spacing:0.05em; text-transform:uppercase; }
+
+  /* ---------- Reset confirmation modal ---------- */
+  #resetOverlay, #rangeResetOverlay{
+    display:none;
+    position:fixed; inset:0; z-index:500;
+    background: rgba(6,13,26,0.72);
+    align-items:center; justify-content:center;
+    padding: 20px;
+  }
+  #resetOverlay.active, #rangeResetOverlay.active{ display:flex; }
+  .confirm-card{
+    width:min(420px, 92vw);
+    background: linear-gradient(180deg, var(--navy-panel), var(--navy-panel-2));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding: clamp(20px,3vw,32px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+    text-align:center;
+  }
+  .confirm-card h3{
+    font-family:'Anton', sans-serif; font-weight:400;
+    font-size: clamp(20px,3vw,26px);
+    margin: 0 0 10px 0;
+    color: var(--cream);
+  }
+  .confirm-card p{
+    font-family:'Inter', sans-serif;
+    font-size: 14.5px;
+    color: var(--muted);
+    margin: 0 0 22px 0;
+    line-height:1.5;
+  }
+  .confirm-actions{
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  .confirm-no{
+    width:100%;
+    background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+    color: var(--navy-deep);
+    border:none; border-radius:14px;
+    padding:16px; font-family:'Oswald', sans-serif; font-weight:700;
+    font-size:17px; letter-spacing:0.06em; text-transform:uppercase;
+    cursor:pointer;
+  }
+  .confirm-no:active{ transform: scale(0.98); }
+  .confirm-yes{
+    background: transparent;
+    color: var(--muted);
+    border:1px solid var(--line); border-radius:10px;
+    padding:8px 18px; font-family:'Oswald', sans-serif; font-weight:600;
+    font-size:12.5px; letter-spacing:0.05em; text-transform:uppercase;
+    cursor:pointer;
+  }
+  .confirm-yes:active{ transform: scale(0.96); }
+</style>
+</head>
+<body>
+
+<div id="rotateHint">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="1.6"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+  <div style="font-family:'Oswald',sans-serif; font-size:16px; letter-spacing:0.06em; text-transform:uppercase;">Draai je toestel naar landschap</div>
+  <div style="color:#7c8fae; font-size:13px;">Deze bingo trekker is gemaakt voor een breed scherm (telefoon liggend, tablet of TV).</div>
+</div>
+
+<div id="app">
+
+  <!-- SETTINGS -->
+  <div id="settingsScreen">
+    <div class="settings-card">
+      <div class="brand"><div class="dot"></div><span>Digitale bingotrekker</span></div>
+      <h1>Instellingen</h1>
+
+      <div class="field">
+        <label>Bingovariant</label>
+        <div class="variant-select" id="variantSelect"></div>
+        <div class="hint" id="variantHint"></div>
+      </div>
+
+      <div class="field">
+        <label for="interval">Interval bij automatisch trekken (seconden)</label>
+        <div class="num-input">
+          <button type="button" id="intMinus">–</button>
+          <input type="number" id="interval" value="8" min="2" max="120">
+          <button type="button" id="intPlus">+</button>
+        </div>
+        <div class="hint">Zo lang wacht de auto-modus tussen elk nummer. Bij manueel trekken maakt dit niets uit.</div>
+      </div>
+
+      <div class="field" style="margin-bottom:6px;">
+        <label>Aankondiging bij elk getrokken nummer</label>
+        <div class="check-tabs" style="margin-bottom:0;">
+          <div class="check-tab active" id="modeBeepTab">🔔 Piepje</div>
+          <div class="check-tab" id="modeSpeechTab">🗣️ Spraak</div>
+        </div>
+        <a href="#" class="speech-config-link" id="speechConfigLink" style="display:none;">Spraak instellen (taal, stijl, stem) →</a>
+      </div>
+
+      <button class="start-btn" id="startBtn">Start bingo</button>
+      <div class="error" id="settingsError"></div>
+      <a href="cards.html" class="cards-link">Bingokaarten maken &amp; printen</a>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="gameScreen">
+    <div class="left-panel">
+      <div class="status-line" id="statusLine">Klaar om te trekken</div>
+      <div class="cage">
+        <svg class="ring-svg" viewBox="0 0 100 100">
+          <circle class="ring-track" cx="50" cy="50" r="46"></circle>
+          <circle class="ring-progress" id="ringProgress" cx="50" cy="50" r="46"></circle>
+        </svg>
+        <div class="ball" id="ball"><div class="ball-number" id="ballNumber"></div><div class="ball-placeholder" id="ballPlaceholder">Druk op trek of start auto</div></div>
+      </div>
+      <div class="trail" id="trail"></div>
+      <div class="controls">
+        <button class="btn primary" id="drawBtn">Trek nummer</button>
+        <button class="btn gold" id="autoBtn">Auto starten</button>
+      </div>
+      <div class="controls">
+        <button class="btn ghost" id="resetBtn">Spel resetten</button>
+        <button class="btn ghost" id="checkBtn">Check</button>
+        <button class="btn ghost" id="backBtn">Instellingen</button>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="right-header">
+        <h2>Getrokken nummers</h2>
+        <div class="count" id="countLabel">0 / 75</div>
+      </div>
+      <div class="grid-wrap"><div id="numberGrid"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="resetOverlay">
+  <div class="confirm-card">
+    <h3>Spel resetten?</h3>
+    <p>Weet je het zeker? Alle al getrokken nummers gaan terug in de pot en het spel begint opnieuw.</p>
+    <div class="confirm-actions">
+      <button class="confirm-no" id="confirmNo">Nee, verdergaan</button>
+      <button class="confirm-yes" id="confirmYes">Ja, resetten</button>
+    </div>
+  </div>
+</div>
+
+<div id="rangeResetOverlay">
+  <div class="confirm-card">
+    <h3>Aantal nummers aangepast</h3>
+    <p>Je hebt het bereik gewijzigd. Dit start het spel opnieuw — alle al getrokken nummers gaan verloren. Zeker weten?</p>
+    <div class="confirm-actions">
+      <button class="confirm-no" id="rangeConfirmNo">Nee, terug</button>
+      <button class="confirm-yes" id="rangeConfirmYes">Ja, spel herstarten</button>
+    </div>
+  </div>
+</div>
+
+<div id="checkOverlay">
+  <div class="check-card">
+    <div class="check-header">
+      <h3>Kaart checken</h3>
+      <button class="check-close" id="checkClose">&times;</button>
+    </div>
+    <div class="check-tabs">
+      <div class="check-tab active" id="tabCode">Code intypen</div>
+      <div class="check-tab" id="tabState">Trekking-QR / link</div>
+    </div>
+
+    <div id="codePane">
+      <div class="field" style="margin-bottom:14px;">
+        <label for="codeInput">Code onder de kaart</label>
+        <input type="text" id="codeInput" placeholder="bv. K3F9P2-04" style="width:100%; text-transform:uppercase;">
+      </div>
+      <button class="btn gold" id="codeCheckBtn" style="width:100%;">Check</button>
+      <div id="codeResult"></div>
+      <div class="scan-hint" style="margin-top:16px;">
+        Liever de QR-code op de kaart zelf scannen? Gebruik <a href="scan.html" target="_blank" style="color:var(--gold-soft);">de scanner</a> op je eigen telefoon — dan blijft dit trekkerscherm gewoon zichtbaar voor iedereen.
+      </div>
+    </div>
+
+    <div id="statePane" style="display:none;">
+      <div id="qrStateBox">
+        <canvas id="qrStateCanvas"></canvas>
+        <div id="qrStateCount">0 nummers getrokken</div>
+        <div class="scan-hint">Scan deze QR met <a href="scan.html" target="_blank" style="color:var(--gold-soft);">de scanner</a> op een los toestel, of deel de link hieronder (handiger dan een schermfoto scannen).</div>
+        <button class="btn gold" id="copyStateLinkBtn" style="margin-top:10px;">Link kopiëren</button>
+        <div class="scan-hint" id="stateLinkHint" style="margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="speechOverlay">
+  <div class="check-card">
+    <div class="check-header">
+      <h3>Spraak instellen</h3>
+      <button class="check-close" id="speechClose">&times;</button>
+    </div>
+
+    <div class="field">
+      <label>Taal / accent</label>
+      <div class="lang-grid" id="speechLangGrid"></div>
+    </div>
+
+    <div class="field">
+      <label>Uitspraakstijl</label>
+      <div class="check-tabs">
+        <div class="check-tab" id="speechStyleTogether">Aan elkaar<br><span style="font-size:10px; text-transform:none; letter-spacing:0;">"vierenzeventig"</span></div>
+        <div class="check-tab" id="speechStyleDigits">Los per cijfer<br><span style="font-size:10px; text-transform:none; letter-spacing:0;">"zeven — vier"</span></div>
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label for="speechVoiceSelect">Stem</label>
+      <select id="speechVoiceSelect" class="voice-select"></select>
+      <div class="hint" id="speechVoiceHint" style="margin-top:6px;"></div>
+    </div>
+
+    <button class="btn gold" id="speechPreviewBtn" style="width:100%;">🔊 Test met een voorbeeldgetal</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const variantSelect = document.getElementById('variantSelect');
+  const variantHint = document.getElementById('variantHint');
+  const intInput = document.getElementById('interval');
+  const intMinus = document.getElementById('intMinus');
+  const intPlus = document.getElementById('intPlus');
+  const startBtn = document.getElementById('startBtn');
+  const settingsError = document.getElementById('settingsError');
+  const modeBeepTab = document.getElementById('modeBeepTab');
+  const modeSpeechTab = document.getElementById('modeSpeechTab');
+  const speechConfigLink = document.getElementById('speechConfigLink');
+  const speechOverlay = document.getElementById('speechOverlay');
+  const speechClose = document.getElementById('speechClose');
+  const speechLangGrid = document.getElementById('speechLangGrid');
+  const speechStyleTogether = document.getElementById('speechStyleTogether');
+  const speechStyleDigits = document.getElementById('speechStyleDigits');
+  const speechVoiceSelect = document.getElementById('speechVoiceSelect');
+  const speechVoiceHint = document.getElementById('speechVoiceHint');
+  const speechPreviewBtn = document.getElementById('speechPreviewBtn');
+
+  const settingsScreen = document.getElementById('settingsScreen');
+  const gameScreen = document.getElementById('gameScreen');
+  const numberGrid = document.getElementById('numberGrid');
+  const countLabel = document.getElementById('countLabel');
+  const ball = document.getElementById('ball');
+  const ballNumber = document.getElementById('ballNumber');
+  const ballPlaceholder = document.getElementById('ballPlaceholder');
+  const statusLine = document.getElementById('statusLine');
+  const trail = document.getElementById('trail');
+  const drawBtn = document.getElementById('drawBtn');
+  const autoBtn = document.getElementById('autoBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const backBtn = document.getElementById('backBtn');
+  const ringProgress = document.getElementById('ringProgress');
+  const resetOverlay = document.getElementById('resetOverlay');
+  const confirmYes = document.getElementById('confirmYes');
+  const confirmNo = document.getElementById('confirmNo');
+  const rangeResetOverlay = document.getElementById('rangeResetOverlay');
+  const rangeConfirmYes = document.getElementById('rangeConfirmYes');
+  const rangeConfirmNo = document.getElementById('rangeConfirmNo');
+
+  const checkBtn = document.getElementById('checkBtn');
+  const checkOverlay = document.getElementById('checkOverlay');
+  const checkClose = document.getElementById('checkClose');
+  const tabCode = document.getElementById('tabCode');
+  const tabState = document.getElementById('tabState');
+  const codePane = document.getElementById('codePane');
+  const statePane = document.getElementById('statePane');
+  const codeInput = document.getElementById('codeInput');
+  const codeCheckBtn = document.getElementById('codeCheckBtn');
+  const codeResult = document.getElementById('codeResult');
+  const qrStateCanvas = document.getElementById('qrStateCanvas');
+  const qrStateCount = document.getElementById('qrStateCount');
+  const copyStateLinkBtn = document.getElementById('copyStateLinkBtn');
+  const stateLinkHint = document.getElementById('stateLinkHint');
+
+  let midGameEdit = false;   // true wanneer we via 'Instellingen' vanuit een actief spel kwamen
+  let pendingMax = null;
+  let pendingInterval = null;
+  let pendingVariantId = null;
+
+  let currentVariantId = DEFAULT_VARIANT_ID;
+  let selectedVariantId = currentVariantId;
+  try{
+    const savedVariant = localStorage.getItem('bingo2-variant');
+    if(savedVariant && BINGO_VARIANTS[savedVariant]){ currentVariantId = savedVariant; selectedVariantId = savedVariant; }
+  }catch(e){}
+
+  Object.values(BINGO_VARIANTS).forEach(v => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'variant-opt';
+    btn.dataset.variant = v.id;
+    btn.innerHTML = '<div class="v-title">' + v.label + '</div><div class="v-sub">' + v.totalBalls + ' ballen \u00b7 ' + v.rows + 'x' + v.cols + ' kaart</div>';
+    btn.onclick = () => selectSettingsVariant(v.id);
+    variantSelect.appendChild(btn);
+  });
+  function selectSettingsVariant(id){
+    selectedVariantId = id;
+    variantSelect.querySelectorAll('.variant-opt').forEach(b => b.classList.toggle('active', b.dataset.variant === id));
+    variantHint.textContent = BINGO_VARIANTS[id].description;
+    try{ localStorage.setItem('bingo2-variant', id); }catch(e){}
+  }
+  selectSettingsVariant(selectedVariantId);
+
+  const RING_R = 46;
+  const RING_C = 2 * Math.PI * RING_R;
+  let cdRAF = null, cdStartTs = 0;
+
+  function lerpColor(p){
+    const from = [47,174,102];  // groen
+    const to   = [200,32,58];   // rood
+    const r = Math.round(from[0] + (to[0]-from[0]) * p);
+    const g = Math.round(from[1] + (to[1]-from[1]) * p);
+    const b = Math.round(from[2] + (to[2]-from[2]) * p);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function setRingIdle(){
+    if(cdRAF){ cancelAnimationFrame(cdRAF); cdRAF = null; }
+    ringProgress.style.stroke = 'var(--gold)';
+    ringProgress.style.strokeDashoffset = '0';
+  }
+
+  function cdTick(now){
+    if(!autoTimer){ setRingIdle(); return; }
+    const elapsed = now - cdStartTs;
+    const progress = Math.min(elapsed / (intervalSec*1000), 1);
+    ringProgress.style.strokeDashoffset = (progress * RING_C).toFixed(2);
+    ringProgress.style.stroke = lerpColor(progress);
+    if(progress < 1){ cdRAF = requestAnimationFrame(cdTick); }
+  }
+
+  function startCountdownCycle(){
+    if(cdRAF){ cancelAnimationFrame(cdRAF); }
+    ringProgress.style.strokeDashoffset = '0';
+    ringProgress.style.stroke = lerpColor(0);
+    cdStartTs = performance.now();
+    cdRAF = requestAnimationFrame(cdTick);
+  }
+
+  let maxNumber = BINGO_VARIANTS[currentVariantId].totalBalls;
+  let intervalSec = 8;
+  let called = new Set();
+  let pool = [];
+  let poolIndex = 0;
+  let autoTimer = null;
+  let audioCtx = null;
+
+  function buildPool(){
+    pool = Array.from({length: maxNumber}, (_, i) => i + 1);
+    // Fisher-Yates shuffle: elke volgorde even waarschijnlijk
+    for(let i = pool.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    poolIndex = 0;
+  }
+
+  function clampStep(input, min, max, step){
+    let v = parseInt(input.value || '0', 10) + step;
+    v = Math.max(min, Math.min(max, v));
+    input.value = v;
+  }
+  intMinus.onclick = () => clampStep(intInput, 2, 120, -1);
+  intPlus.onclick = () => clampStep(intInput, 2, 120, 1);
+
+  function playPing(){
+    if(soundMode !== 'beep') return;
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, t0);
+      osc.frequency.exponentialRampToValueAtTime(1320, t0 + 0.12);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.22, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.5);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.55);
+    }catch(e){}
+  }
+
+  /* ---------- Spraak: taal/stijl-opties en stemmen ---------- */
+  const SPEECH_LANGS = [
+    { key:'nl-NL', label:'Nederlands' },
+    { key:'nl-BE', label:'Vlaams' },
+    { key:'en-GB', label:'Engels (UK)' },
+    { key:'en-US', label:'Engels (US)' },
+    { key:'fr-FR', label:'Frans' },
+    { key:'de-DE', label:'Duits' },
+  ];
+  const DIGIT_WORDS = {
+    nl: ['nul','een','twee','drie','vier','vijf','zes','zeven','acht','negen'],
+    en: ['zero','one','two','three','four','five','six','seven','eight','nine'],
+    fr: ['zéro','un','deux','trois','quatre','cinq','six','sept','huit','neuf'],
+    de: ['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun'],
+  };
+  const WORD_TABLES = {
+    nl: { ones:['nul','een','twee','drie','vier','vijf','zes','zeven','acht','negen','tien','elf','twaalf','dertien','veertien','vijftien','zestien','zeventien','achttien','negentien'],
+          tens:{2:'twintig',3:'dertig',4:'veertig',5:'vijftig',6:'zestig',7:'zeventig',8:'tachtig',9:'negentig'}, joiner:'en' },
+    en: { ones:['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'],
+          tens:{2:'twenty',3:'thirty',4:'forty',5:'fifty',6:'sixty',7:'seventy',8:'eighty',9:'ninety'}, joiner:'-' },
+    fr: { ones:['zéro','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'],
+          tens:{2:'vingt',3:'trente',4:'quarante',5:'cinquante',6:'soixante',7:'soixante-dix',8:'quatre-vingt',9:'quatre-vingt-dix'}, joiner:'-' },
+    de: { ones:['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn','elf','zwölf','dreizehn','vierzehn','fünfzehn','sechzehn','siebzehn','achtzehn','neunzehn'],
+          tens:{2:'zwanzig',3:'dreißig',4:'vierzig',5:'fünfzig',6:'sechzig',7:'siebzig',8:'achtzig',9:'neunzig'}, joiner:'und' },
+  };
+  function langFamily(bcp47){ return bcp47.split('-')[0]; }
+  function numberToWords(n, lang){
+    const fam = langFamily(lang);
+    const t = WORD_TABLES[fam] || WORD_TABLES.en;
+    if(n < 20) return t.ones[n];
+    const tensDigit = Math.floor(n/10), onesDigit = n%10;
+    const tensWord = t.tens[tensDigit] || '';
+    if(onesDigit === 0) return tensWord;
+    if(fam === 'nl' || fam === 'de') return t.ones[onesDigit] + t.joiner + tensWord;
+    if(fam === 'fr') return tensWord + t.joiner + t.ones[onesDigit];
+    return tensWord + t.joiner + t.ones[onesDigit];
+  }
+  function numberToDigitWords(n, lang){
+    const fam = langFamily(lang);
+    const words = DIGIT_WORDS[fam] || DIGIT_WORDS.en;
+    return String(n).split('').map(d => words[parseInt(d,10)]).join(' ');
+  }
+  function announceText(n){
+    return speechStyle === 'together' ? numberToWords(n, speechLang) : numberToDigitWords(n, speechLang);
+  }
+
+  let soundMode = 'beep';
+  let speechLang = 'nl-NL';
+  let speechStyle = 'together';
+  let speechVoiceName = '';
+  let allVoices = [];
+  try{
+    soundMode = localStorage.getItem('bingo2-sound-mode') || 'beep';
+    speechLang = localStorage.getItem('bingo2-speech-lang') || 'nl-NL';
+    speechStyle = localStorage.getItem('bingo2-speech-style') || 'together';
+    speechVoiceName = localStorage.getItem('bingo2-speech-voice') || '';
+  }catch(e){}
+
+  function saveSpeechSettings(){
+    try{
+      localStorage.setItem('bingo2-sound-mode', soundMode);
+      localStorage.setItem('bingo2-speech-lang', speechLang);
+      localStorage.setItem('bingo2-speech-style', speechStyle);
+      localStorage.setItem('bingo2-speech-voice', speechVoiceName);
+    }catch(e){}
+  }
+
+  function setMode(mode){
+    soundMode = mode;
+    modeBeepTab.classList.toggle('active', mode === 'beep');
+    modeSpeechTab.classList.toggle('active', mode === 'speech');
+    speechConfigLink.style.display = mode === 'speech' ? 'inline-block' : 'none';
+    saveSpeechSettings();
+  }
+  modeBeepTab.onclick = () => setMode('beep');
+  modeSpeechTab.onclick = () => setMode('speech');
+  setMode(soundMode);
+
+  function buildLangGrid(){
+    speechLangGrid.innerHTML = '';
+    SPEECH_LANGS.forEach(l => {
+      const btn = document.createElement('div');
+      btn.className = 'lang-btn' + (l.key === speechLang ? ' active' : '');
+      btn.textContent = l.label;
+      btn.onclick = () => {
+        speechLang = l.key;
+        speechLangGrid.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        populateVoices();
+        saveSpeechSettings();
+      };
+      speechLangGrid.appendChild(btn);
+    });
+  }
+  buildLangGrid();
+
+  function setStyle(style){
+    speechStyle = style;
+    speechStyleTogether.classList.toggle('active', style === 'together');
+    speechStyleDigits.classList.toggle('active', style === 'digits');
+    saveSpeechSettings();
+  }
+  speechStyleTogether.onclick = () => setStyle('together');
+  speechStyleDigits.onclick = () => setStyle('digits');
+  setStyle(speechStyle);
+
+  function populateVoices(){
+    speechVoiceSelect.innerHTML = '';
+    let matches = allVoices.filter(v => v.lang.toLowerCase() === speechLang.toLowerCase());
+    if(matches.length === 0){
+      const fam = langFamily(speechLang);
+      matches = allVoices.filter(v => v.lang.toLowerCase().startsWith(fam));
+    }
+    if(matches.length === 0){
+      speechVoiceHint.textContent = 'Geen stem gevonden voor deze taal op dit toestel — het systeem gebruikt dan de standaardstem.';
+      const opt = document.createElement('option');
+      opt.textContent = '— standaardstem —';
+      speechVoiceSelect.appendChild(opt);
+      return;
+    }
+    speechVoiceHint.textContent = matches.length + ' stem(men) gevonden op dit toestel.';
+    matches.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = v.name + ' (' + v.lang + ')';
+      if(v.name === speechVoiceName) opt.selected = true;
+      speechVoiceSelect.appendChild(opt);
+    });
+  }
+  speechVoiceSelect.onchange = () => { speechVoiceName = speechVoiceSelect.value; saveSpeechSettings(); };
+
+  function loadVoices(){
+    if(!('speechSynthesis' in window)) return;
+    allVoices = speechSynthesis.getVoices();
+    populateVoices();
+  }
+  if('speechSynthesis' in window){
+    loadVoices();
+    if('onvoiceschanged' in speechSynthesis) speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
+  speechConfigLink.onclick = (e) => { e.preventDefault(); speechOverlay.classList.add('active'); };
+  speechClose.onclick = () => { speechOverlay.classList.remove('active'); };
+  speechOverlay.addEventListener('click', (e) => { if(e.target === speechOverlay) speechOverlay.classList.remove('active'); });
+  speechPreviewBtn.onclick = () => { speakNumber(74); };
+
+  function speakNumber(n){
+    if(!('speechSynthesis' in window)) return;
+    try{
+      speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(announceText(n));
+      utter.lang = speechLang;
+      const chosen = allVoices.find(v => v.name === speechVoiceName);
+      if(chosen) utter.voice = chosen;
+      speechSynthesis.speak(utter);
+    }catch(e){}
+  }
+
+  function playAnnounce(n){
+    if(soundMode === 'speech') speakNumber(n);
+    else playPing();
+  }
+
+  function buildGrid(){
+    numberGrid.innerHTML = '';
+    for(let i=1;i<=maxNumber;i++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = 'cell-' + i;
+      cell.textContent = i;
+      numberGrid.appendChild(cell);
+    }
+    countLabel.textContent = called.size + ' / ' + maxNumber;
+    layoutGrid();
+  }
+
+  function layoutGrid(){
+    const wrap = numberGrid.parentElement;
+    const width = wrap.clientWidth;
+    const height = wrap.clientHeight;
+    if(width < 10 || height < 10) return; // scherm nog niet zichtbaar/gemeten
+
+    const count = maxNumber;
+    const gap = Math.max(3, Math.min(9, Math.round(Math.min(width, height) / 70)));
+
+    let best = { cols: 1, rows: count, size: 0 };
+    for(let cols = 1; cols <= count; cols++){
+      const rows = Math.ceil(count / cols);
+      const cellW = (width - gap * (cols - 1)) / cols;
+      const cellH = (height - gap * (rows - 1)) / rows;
+      const size = Math.min(cellW, cellH);
+      if(size > best.size){ best = { cols, rows, size }; }
+    }
+
+    const s = Math.max(4, Math.floor(best.size));
+    numberGrid.style.gap = gap + 'px';
+    numberGrid.style.gridTemplateColumns = `repeat(${best.cols}, ${s}px)`;
+    numberGrid.style.gridTemplateRows = `repeat(${best.rows}, ${s}px)`;
+    numberGrid.style.fontSize = Math.max(8, s * 0.38) + 'px';
+  }
+
+  let layoutRAF = null;
+  function scheduleLayout(){
+    if(layoutRAF) cancelAnimationFrame(layoutRAF);
+    layoutRAF = requestAnimationFrame(layoutGrid);
+  }
+  window.addEventListener('resize', scheduleLayout);
+  window.addEventListener('orientationchange', scheduleLayout);
+
+  function updateTrail(){
+    const arr = Array.from(called).slice(-8);
+    trail.innerHTML = '';
+    arr.forEach(n => {
+      const c = document.createElement('div');
+      c.className = 'chip';
+      c.textContent = n;
+      trail.appendChild(c);
+    });
+  }
+
+  function drawNumber(){
+    if(poolIndex >= pool.length){
+      statusLine.textContent = 'Alle nummers zijn getrokken!';
+      stopAuto();
+      return;
+    }
+    const n = pool[poolIndex];
+    poolIndex++;
+    called.add(n);
+
+    document.querySelectorAll('.cell.current').forEach(c => c.classList.remove('current'));
+    const cell = document.getElementById('cell-' + n);
+    if(cell){ cell.classList.add('called'); cell.classList.add('current'); }
+
+    ballPlaceholder.style.display = 'none';
+    ballNumber.textContent = n;
+    ball.classList.remove('pop');
+    void ball.offsetWidth;
+    ball.classList.add('pop');
+
+    playAnnounce(n);
+    updateTrail();
+    countLabel.textContent = called.size + ' / ' + maxNumber;
+    statusLine.textContent = called.size + ' van ' + maxNumber + ' getrokken';
+
+    if(called.size >= maxNumber){
+      statusLine.textContent = 'Alle nummers zijn getrokken!';
+      stopAuto();
+    } else if(autoTimer){
+      startCountdownCycle();
+    }
+  }
+
+  function startAuto(){
+    if(autoTimer) return;
+    autoBtn.textContent = 'Auto pauzeren';
+    autoBtn.classList.add('auto-on');
+    statusLine.textContent = 'Auto-modus loopt · ' + called.size + ' van ' + maxNumber + ' getrokken';
+    autoTimer = setInterval(drawNumber, intervalSec*1000);
+    startCountdownCycle();
+  }
+  function stopAuto(wasPaused){
+    if(autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+    autoBtn.textContent = 'Auto starten';
+    autoBtn.classList.remove('auto-on');
+    setRingIdle();
+    if(wasPaused) statusLine.textContent = 'Gepauzeerd · ' + called.size + ' van ' + maxNumber + ' getrokken';
+  }
+
+  drawBtn.onclick = () => {
+    // Manueel trekken overrulet auto-modus: auto pauzeert automatisch.
+    if(autoTimer) stopAuto(true);
+    drawNumber();
+  };
+  autoBtn.onclick = () => { autoTimer ? stopAuto(true) : startAuto(); };
+
+  function performReset(){
+    stopAuto();
+    setRingIdle();
+    called = new Set();
+    buildPool();
+    ballNumber.textContent = '';
+    ballPlaceholder.style.display = 'block';
+    statusLine.textContent = 'Klaar om te trekken';
+    trail.innerHTML = '';
+    buildGrid();
+  }
+
+  resetBtn.onclick = () => { resetOverlay.classList.add('active'); };
+  confirmYes.onclick = () => { resetOverlay.classList.remove('active'); performReset(); };
+  confirmNo.onclick = () => { resetOverlay.classList.remove('active'); };
+  resetOverlay.addEventListener('click', (e) => {
+    if(e.target === resetOverlay) resetOverlay.classList.remove('active');
+  });
+
+  backBtn.onclick = () => {
+    stopAuto();
+    midGameEdit = true;
+    selectSettingsVariant(currentVariantId);
+    intInput.value = intervalSec;
+    settingsError.textContent = '';
+    startBtn.textContent = 'Ga verder';
+    gameScreen.classList.remove('active');
+    settingsScreen.style.display = 'flex';
+  };
+
+  startBtn.onclick = () => {
+    const m = BINGO_VARIANTS[selectedVariantId].totalBalls;
+    const iv = parseInt(intInput.value, 10);
+    if(!iv || iv < 2 || iv > 120){ settingsError.textContent = 'Kies een geldig interval (2 t/m 120 seconden).'; return; }
+    settingsError.textContent = '';
+
+    if(midGameEdit){
+      if(selectedVariantId !== currentVariantId){
+        // Variant gewijzigd tijdens een lopend spel -> eerst bevestigen, want dit reset alles.
+        pendingMax = m;
+        pendingVariantId = selectedVariantId;
+        pendingInterval = iv;
+        rangeResetOverlay.classList.add('active');
+        return;
+      }
+      // Alleen de snelheid (interval) is aangepast: gewoon toepassen, spel blijft ongewijzigd.
+      intervalSec = iv;
+      midGameEdit = false;
+      settingsScreen.style.display = 'none';
+      gameScreen.classList.add('active');
+      scheduleLayout();
+      return;
+    }
+
+    // Volledig nieuw spel (eerste start, of na een reset vanaf het settingsscherm).
+    currentVariantId = selectedVariantId;
+    maxNumber = m;
+    intervalSec = iv;
+    called = new Set();
+    buildPool();
+    ballNumber.textContent = '';
+    ballPlaceholder.style.display = 'block';
+    statusLine.textContent = 'Klaar om te trekken';
+    trail.innerHTML = '';
+    settingsScreen.style.display = 'none';
+    gameScreen.classList.add('active');
+    buildGrid();
+    setRingIdle();
+    try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
+    if(soundMode === 'speech' && 'speechSynthesis' in window){
+      try{
+        const unlock = new SpeechSynthesisUtterance(' ');
+        unlock.volume = 0;
+        speechSynthesis.speak(unlock);
+      }catch(e){}
+    }
+  };
+
+  rangeConfirmYes.onclick = () => {
+    rangeResetOverlay.classList.remove('active');
+    currentVariantId = pendingVariantId;
+    maxNumber = pendingMax;
+    intervalSec = pendingInterval;
+    called = new Set();
+    buildPool();
+    ballNumber.textContent = '';
+    ballPlaceholder.style.display = 'block';
+    statusLine.textContent = 'Klaar om te trekken';
+    trail.innerHTML = '';
+    midGameEdit = false;
+    settingsScreen.style.display = 'none';
+    gameScreen.classList.add('active');
+    buildGrid();
+    setRingIdle();
+  };
+  function cancelRangeChange(){
+    rangeResetOverlay.classList.remove('active');
+    selectSettingsVariant(currentVariantId); // selectie terugzetten naar de huidige spelwaarde
+    midGameEdit = false;
+    settingsScreen.style.display = 'none';
+    gameScreen.classList.add('active');
+  }
+  rangeConfirmNo.onclick = cancelRangeChange;
+  rangeResetOverlay.addEventListener('click', (e) => {
+    if(e.target === rangeResetOverlay) cancelRangeChange();
+  });
+
+  buildGrid();
+
+  /* ==================== Check-modal ==================== */
+  function openCheckModal(){
+    checkOverlay.classList.add('active');
+    switchTab('code');
+  }
+  function closeCheckModal(){
+    checkOverlay.classList.remove('active');
+  }
+  checkBtn.onclick = openCheckModal;
+  checkClose.onclick = closeCheckModal;
+  checkOverlay.addEventListener('click', (e) => { if(e.target === checkOverlay) closeCheckModal(); });
+
+  function switchTab(which){
+    tabCode.classList.toggle('active', which === 'code');
+    tabState.classList.toggle('active', which === 'state');
+    codePane.style.display = which === 'code' ? 'block' : 'none';
+    statePane.style.display = which === 'state' ? 'block' : 'none';
+
+    if(which === 'state'){ renderStateQR(); }
+    else if(which === 'code'){ codeResult.innerHTML = ''; codeInput.value = ''; }
+  }
+  tabCode.onclick = () => switchTab('code');
+  tabState.onclick = () => switchTab('state');
+
+  codeCheckBtn.onclick = () => {
+    const card = decodeTextCode(codeInput.value);
+    if(!card){
+      codeResult.innerHTML = '<div class="scan-hint">Ongeldige code. Controleer de spelling (bv. K3F9P2-04).</div>';
+      return;
+    }
+    const res = checkCardAgainstDrawn(card, called);
+    codeResult.innerHTML = renderCheckResultHTML(res, card, called);
+  };
+
+  function renderStateQR(){
+    const text = encodeStateQR(Array.from(called));
+    qrStateCount.textContent = called.size + ' nummer' + (called.size === 1 ? '' : 's') + ' getrokken';
+    QRCode.toCanvas(qrStateCanvas, text, {
+      width: 220, margin: 1,
+      color: { dark: '#0a1730', light: '#ffffff' }
+    }, function(err){ if(err) console.error('QR error:', err); });
+  }
+
+  copyStateLinkBtn.onclick = () => {
+    const text = encodeStateQR(Array.from(called));
+    const url = window.location.origin + window.location.pathname.replace('index.html', '') + 'scan.html?state=' + encodeURIComponent(text);
+    navigator.clipboard.writeText(url).then(() => {
+      stateLinkHint.textContent = "Link gekopieerd \u2014 stuur 'm door (WhatsApp, AirDrop, ...) i.p.v. het scherm te scannen.";
+    }).catch(() => { stateLinkHint.textContent = url; });
+  };
+})();
+</script>
+</body>
+</html>
