@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bingo — spraak testen</title>
+<style>
+  :root{
+    --navy-deep:#0f1b2d; --navy-panel:#16263d; --line:#2a3c56;
+    --gold:#e0b94f; --gold-soft:#c9a84c; --cream:#f4ecd8; --muted:#8fa1bd; --green:#2fae66;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--navy-deep); color:var(--cream);
+    font-family:'Segoe UI',Inter,system-ui,sans-serif;
+    display:flex; justify-content:center; padding:24px 16px;
+  }
+  .wrap{ max-width:480px; width:100%; }
+  h1{ font-size:22px; margin:0 0 4px 0; }
+  .subtitle{ color:var(--muted); font-size:14px; margin-bottom:20px; }
+  .panel{ background:var(--navy-panel); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  label{ display:block; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:6px; }
+  input[type=number]{
+    width:100%; font-size:32px; text-align:center; padding:14px; border-radius:10px;
+    border:1px solid var(--line); background:var(--navy-deep); color:var(--cream); margin-bottom:12px;
+  }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .opt-btn{
+    flex:1 1 auto; min-width:90px; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--navy-deep); color:var(--muted); font-size:13px; cursor:pointer; text-align:center;
+  }
+  .opt-btn.active{ background:var(--gold); color:var(--navy-deep); border-color:transparent; font-weight:700; }
+  select{
+    width:100%; padding:10px; border-radius:10px; border:1px solid var(--line);
+    background:var(--navy-deep); color:var(--cream); font-size:14px; margin-bottom:4px;
+  }
+  .hint{ font-size:12px; color:var(--muted); margin-top:6px; }
+  .speak-btn{
+    width:100%; padding:16px; border-radius:12px; border:none; background:var(--green); color:#fff;
+    font-size:18px; font-weight:700; cursor:pointer; margin-top:6px;
+  }
+  .speak-btn:active{ opacity:.85; }
+  .preview{
+    margin-top:14px; padding:12px; border-radius:10px; background:var(--navy-deep); border:1px solid var(--line);
+    font-size:14px; color:var(--gold-soft); text-align:center; min-height:20px;
+  }
+  .no-voices{ color:#e08b8b; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Uitspraak testen</h1>
+  <div class="subtitle">Alleen om te testen hoe getallen klinken — wordt nog niet in de trekker gebruikt.</div>
+
+  <div class="panel">
+    <label for="numInput">Getal</label>
+    <input type="number" id="numInput" min="1" max="90" value="74" inputmode="numeric">
+
+    <label>Taal / accent</label>
+    <div class="row" id="langRow"></div>
+
+    <label>Uitspraakstijl</label>
+    <div class="row" id="styleRow">
+      <button class="opt-btn active" data-style="together">Aan elkaar<br><span style="font-size:11px">"vierenzeventig"</span></button>
+      <button class="opt-btn" data-style="digits">Los per cijfer<br><span style="font-size:11px">"zeven — vier"</span></button>
+    </div>
+
+    <label>Stem (afhankelijk van je toestel/browser)</label>
+    <select id="voiceSelect"></select>
+    <div class="hint" id="voiceHint"></div>
+
+    <button class="speak-btn" id="speakBtn">🔊 Spreek uit</button>
+    <div class="preview" id="preview"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const numInput = document.getElementById('numInput');
+  const langRow = document.getElementById('langRow');
+  const styleRow = document.getElementById('styleRow');
+  const voiceSelect = document.getElementById('voiceSelect');
+  const voiceHint = document.getElementById('voiceHint');
+  const speakBtn = document.getElementById('speakBtn');
+  const preview = document.getElementById('preview');
+
+  // Taalopties: label + BCP-47 taalcode(s) om op te filteren uit de beschikbare stemmen.
+  const LANGS = [
+    { key:'nl-NL', label:'Nederlands (NL)' },
+    { key:'nl-BE', label:'Vlaams (BE)' },
+    { key:'en-GB', label:'Engels (UK)' },
+    { key:'en-US', label:'Engels (US)' },
+    { key:'fr-FR', label:'Frans' },
+    { key:'de-DE', label:'Duits' },
+  ];
+
+  const DIGIT_WORDS = {
+    'nl': ['nul','een','twee','drie','vier','vijf','zes','zeven','acht','negen'],
+    'en': ['zero','one','two','three','four','five','six','seven','eight','nine'],
+    'fr': ['zéro','un','deux','trois','quatre','cinq','six','sept','huit','neuf'],
+    'de': ['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun'],
+  };
+
+  let currentLang = 'nl-NL';
+  let currentStyle = 'together';
+  let allVoices = [];
+
+  function langFamily(bcp47){
+    return bcp47.split('-')[0]; // 'nl-BE' -> 'nl'
+  }
+
+  function buildLangButtons(){
+    LANGS.forEach(l => {
+      const btn = document.createElement('button');
+      btn.className = 'opt-btn' + (l.key === currentLang ? ' active' : '');
+      btn.textContent = l.label;
+      btn.dataset.lang = l.key;
+      btn.onclick = () => {
+        currentLang = l.key;
+        langRow.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        populateVoices();
+        updatePreview();
+      };
+      langRow.appendChild(btn);
+    });
+  }
+
+  styleRow.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.onclick = () => {
+      currentStyle = btn.dataset.style;
+      styleRow.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updatePreview();
+    };
+  });
+
+  function populateVoices(){
+    voiceSelect.innerHTML = '';
+    // Eerst exacte match (bv. nl-BE), dan taalfamilie (nl-*) als fallback.
+    let matches = allVoices.filter(v => v.lang.toLowerCase() === currentLang.toLowerCase());
+    if(matches.length === 0){
+      const fam = langFamily(currentLang);
+      matches = allVoices.filter(v => v.lang.toLowerCase().startsWith(fam));
+    }
+    if(matches.length === 0){
+      voiceHint.textContent = 'Geen stem voor deze taal gevonden op dit toestel/browser — probeer een andere taal of browser (Chrome/Edge hebben meestal de meeste stemmen).';
+      voiceHint.classList.add('no-voices');
+      const opt = document.createElement('option');
+      opt.textContent = '— geen stem beschikbaar —';
+      voiceSelect.appendChild(opt);
+      return;
+    }
+    voiceHint.classList.remove('no-voices');
+    voiceHint.textContent = matches.length + ' stem(men) gevonden.';
+    matches.forEach((v, i) => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      opt.textContent = v.name + ' (' + v.lang + ')' + (v.localService ? '' : ' — online');
+      voiceSelect.appendChild(opt);
+    });
+  }
+
+  function loadVoices(){
+    allVoices = speechSynthesis.getVoices();
+    populateVoices();
+  }
+
+  function numberToWords(n, lang){
+    // Eenvoudige NL/EN/FR/DE 'aan elkaar' woordvorming voor 0-99, genoeg voor bingogetallen 1-90.
+    const fam = langFamily(lang);
+    const tables = {
+      nl: {
+        ones:['nul','een','twee','drie','vier','vijf','zes','zeven','acht','negen','tien','elf','twaalf','dertien','veertien','vijftien','zestien','zeventien','achttien','negentien'],
+        tens:{2:'twintig',3:'dertig',4:'veertig',5:'vijftig',6:'zestig',7:'zeventig',8:'tachtig',9:'negentig'},
+        joiner:'en'
+      },
+      en: {
+        ones:['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'],
+        tens:{2:'twenty',3:'thirty',4:'forty',5:'fifty',6:'sixty',7:'seventy',8:'eighty',9:'ninety'},
+        joiner:'-'
+      },
+      fr: {
+        ones:['zéro','un','deux','trois','quatre','cinq','six','sept','huit','neuf','dix','onze','douze','treize','quatorze','quinze','seize','dix-sept','dix-huit','dix-neuf'],
+        tens:{2:'vingt',3:'trente',4:'quarante',5:'cinquante',6:'soixante',7:'soixante-dix',8:'quatre-vingt',9:'quatre-vingt-dix'},
+        joiner:'-'
+      },
+      de: {
+        ones:['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn','elf','zwölf','dreizehn','vierzehn','fünfzehn','sechzehn','siebzehn','achtzehn','neunzehn'],
+        tens:{2:'zwanzig',3:'dreißig',4:'vierzig',5:'fünfzig',6:'sechzig',7:'siebzig',8:'achtzig',9:'neunzig'},
+        joiner:'und'
+      }
+    };
+    const t = tables[fam] || tables.en;
+    if(n < 20) return t.ones[n];
+    const tensDigit = Math.floor(n/10), onesDigit = n%10;
+    const tensWord = t.tens[tensDigit] || '';
+    if(onesDigit === 0) return tensWord;
+    if(fam === 'nl' || fam === 'de'){
+      return t.ones[onesDigit] + t.joiner + tensWord; // "vierenzeventig"
+    }
+    if(fam === 'fr'){
+      return tensWord + t.joiner + t.ones[onesDigit];
+    }
+    return tensWord + t.joiner + t.ones[onesDigit]; // engels: twenty-four
+  }
+
+  function numberToDigitWords(n, lang){
+    const fam = langFamily(lang);
+    const words = DIGIT_WORDS[fam] || DIGIT_WORDS.en;
+    return String(n).split('').map(d => words[parseInt(d,10)]).join(' — ');
+  }
+
+  function currentText(){
+    const n = parseInt(numInput.value, 10);
+    if(isNaN(n)) return '';
+    return currentStyle === 'together' ? numberToWords(n, currentLang) : numberToDigitWords(n, currentLang);
+  }
+
+  function updatePreview(){
+    preview.textContent = currentText() || '—';
+  }
+
+  speakBtn.onclick = () => {
+    const text = currentText();
+    if(!text) return;
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = currentLang;
+    const chosen = allVoices.find(v => v.name === voiceSelect.value);
+    if(chosen) utter.voice = chosen;
+    speechSynthesis.speak(utter);
+  };
+
+  numInput.addEventListener('input', updatePreview);
+
+  buildLangButtons();
+  loadVoices();
+  updatePreview();
+  if('onvoiceschanged' in speechSynthesis){
+    speechSynthesis.onvoiceschanged = loadVoices;
+  }
+})();
+</script>
+</body>
+</html>
