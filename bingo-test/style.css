@@ -1,0 +1,113 @@
+:root{
+  --navy-deep: #0a1730;
+  --navy-panel: #102544;
+  --navy-panel-2: #0d1e3a;
+  --red: #c8203a;
+  --red-dark: #8f1526;
+  --gold: #d4af37;
+  --gold-soft: #e8cd6f;
+  --cream: #f4efe3;
+  --muted: #7c8fae;
+  --line: rgba(212,175,55,0.25);
+  --green: #2fae66;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+html,body{
+  margin:0; padding:0; min-height:100%;
+  background: radial-gradient(ellipse at 50% 0%, #142a4d 0%, var(--navy-deep) 60%);
+  color: var(--cream);
+  font-family:'Inter', sans-serif;
+}
+h1,h2,h3{ font-family:'Anton', sans-serif; font-weight:400; margin:0; }
+.brand{ display:flex; align-items:center; gap:14px; }
+.brand .dot{
+  width:14px; height:14px; border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-soft), var(--gold) 55%, var(--red-dark) 100%);
+  box-shadow: 0 0 12px var(--gold);
+}
+.brand span{
+  font-family:'Oswald', sans-serif; letter-spacing:0.28em; font-size:12px;
+  color:var(--gold-soft); text-transform:uppercase;
+}
+.panel{
+  background: linear-gradient(180deg, var(--navy-panel), var(--navy-panel-2));
+  border:1px solid var(--line);
+  border-radius:20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.btn{
+  font-family:'Oswald', sans-serif; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+  font-size:15px;
+  padding:14px 18px;
+  border-radius:12px; border:1px solid var(--line);
+  background: var(--navy-panel);
+  color: var(--cream);
+  cursor:pointer;
+}
+.btn:active{ transform: scale(0.97); }
+.btn.primary{
+  background: linear-gradient(180deg, var(--red), var(--red-dark));
+  border-color: transparent;
+  box-shadow: 0 8px 20px rgba(200,32,58,0.3);
+}
+.btn.gold{
+  background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+  color: var(--navy-deep);
+  border-color: transparent;
+}
+.btn.ghost{ background: transparent; }
+.btn.green{
+  background: linear-gradient(180deg, #4ad080, var(--green));
+  border-color: transparent;
+  color: var(--navy-deep);
+}
+.btn[disabled]{ opacity:0.4; cursor:not-allowed; }
+
+.field label{
+  display:block; font-family:'Oswald', sans-serif; font-size:13px;
+  letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;
+}
+.field .hint{ font-size:12.5px; color:var(--muted); margin-top:6px; }
+input[type=number], input[type=text]{
+  background: var(--navy-deep);
+  border:1px solid var(--line);
+  color:var(--cream);
+  font-family:'Oswald', sans-serif;
+  font-size:18px; font-weight:600;
+  border-radius:10px; padding:10px 12px;
+}
+
+/* Modal overlay pattern */
+.overlay{
+  display:none;
+  position:fixed; inset:0; z-index:500;
+  background: rgba(6,13,26,0.78);
+  align-items:center; justify-content:center;
+  padding: 20px;
+}
+.overlay.active{ display:flex; }
+.overlay .card{
+  width:min(460px, 94vw);
+  max-height:92vh; overflow-y:auto;
+  padding: clamp(20px,3vw,32px);
+  text-align:center;
+}
+.overlay h3{ font-size: clamp(20px,3vw,26px); margin-bottom:10px; }
+.overlay p{ font-family:'Inter',sans-serif; font-size:14.5px; color:var(--muted); line-height:1.5; margin:0 0 20px 0; }
+
+::-webkit-scrollbar{ width:8px; }
+::-webkit-scrollbar-thumb{ background: var(--line); border-radius:8px; }
+
+/* ---------- Hit/miss visualisatie na check ---------- */
+.check-grid{
+  display:grid; grid-template-columns: repeat(9, minmax(0,1fr)); gap:3px;
+  margin: 14px 0; width:100%;
+}
+.check-cell{
+  aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+  border-radius:4px; font-family:'Oswald',sans-serif; font-weight:700;
+  font-size: clamp(9px, 2.6vw, 13px); min-width:0; min-height:0; box-sizing:border-box;
+}
+.check-cell.empty{ background:transparent; }
+.check-cell.hit{ background: linear-gradient(180deg, #4ad080, var(--green)); color:#0a1730; }
+.check-cell.miss{ background: linear-gradient(180deg, #ff5b6e, var(--red-dark)); color:#fff; }
