@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bingo Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="bingo-common.js"></script>
+<script src="vendor-jsqr.min.js"></script>
+<style>
+  body{ padding: 20px; display:flex; justify-content:center; }
+  .wrap{ max-width: 480px; width:100%; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .back-link{ color:var(--gold-soft); font-family:'Oswald',sans-serif; font-size:13px; text-decoration:none; letter-spacing:0.05em; text-transform:uppercase; }
+  h1{ font-size: clamp(22px,4vw,30px); margin: 8px 0 4px 0; }
+  .subtitle{ color:var(--muted); font-family:'Inter',sans-serif; font-size:14px; margin-bottom:20px; }
+
+  .step-panel{ padding: 18px; margin-bottom:18px; }
+
+  .trekking-status{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 14px; border-radius:10px; background: var(--navy-deep); border:1px solid var(--line);
+    margin-bottom:14px; font-family:'Oswald',sans-serif; font-size:13px;
+  }
+  .trekking-status.loaded{ border-color: var(--green); }
+  .trekking-status .ts-label{ color:var(--muted); }
+  .trekking-status .ts-count{ color: var(--gold-soft); font-weight:700; }
+  .trekking-status.loaded .ts-count{ color: var(--green); }
+  .trekking-status button{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    border-radius:8px; padding:5px 10px; font-family:'Oswald',sans-serif; font-size:11px; cursor:pointer;
+  }
+
+  .scan-video-wrap{
+    position:relative; width:100%; aspect-ratio:1/1; border-radius:16px; overflow:hidden;
+    background:#000; border:2px solid var(--gold); margin-bottom:12px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .scan-video-wrap video{ width:100%; height:100%; object-fit:cover; }
+  .scan-frame{
+    position:absolute; inset:12%; border:2px dashed var(--gold-soft); border-radius:12px; pointer-events:none;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .scan-video-wrap.detect-pulse{ border-color: var(--cream); box-shadow: 0 0 0 4px rgba(255,255,255,0.12) inset; }
+  .scan-video-wrap.detect-pulse .scan-frame{ border-color: var(--cream); transform: scale(0.97); }
+  .scan-video-wrap.success-pulse{ border-color: var(--green); box-shadow: 0 0 0 4px rgba(47,174,102,0.25) inset; }
+  .scan-video-wrap.success-pulse .scan-frame{ border-color: var(--green); transform: scale(0.97); }
+  .scan-video-wrap.blocked-pulse{ border-color: #d9534f; box-shadow: 0 0 0 4px rgba(217,83,79,0.22) inset; }
+  .scan-video-wrap.blocked-pulse .scan-frame{ border-color: #d9534f; transform: scale(0.97); }
+  .scan-hint{ text-align:center; font-size:13px; color:var(--muted); }
+  .scan-hint.step-locked{ color: var(--gold-soft); font-weight:600; }
+  .scan-flash{
+    text-align:center; font-size:13px; color: var(--green); font-weight:600;
+    margin-top:8px; min-height:18px;
+  }
+  .scan-flash.blocked{ color: #d9534f; }
+
+  .result-box{ border-radius:14px; padding:18px; text-align:center; margin-top:14px; border:1px solid var(--line); background: var(--navy-panel); }
+  .result-box.win{ background: linear-gradient(180deg, rgba(47,174,102,0.25), rgba(47,174,102,0.08)); border-color: var(--green); }
+  .result-title{ font-family:'Anton', sans-serif; font-size:24px; margin-bottom:8px; }
+  .result-rows{ display:flex; gap:10px; justify-content:center; font-family:'Oswald',sans-serif; font-size:13px; flex-wrap:wrap; }
+  .result-rows span{ padding:6px 10px; border-radius:8px; border:1px solid var(--line); color:var(--muted); }
+  .result-rows span.ok{ color: var(--navy-deep); background: var(--gold); border-color:transparent; }
+
+  .ticket-btn{
+    width:52px; height:52px; border-radius:10px;
+    background: var(--navy-deep); border:1px solid var(--line); color:var(--cream);
+    font-family:'Oswald',sans-serif; font-weight:700; font-size:15px; cursor:pointer;
+  }
+  .ticket-btn.active{ background: var(--gold); color: var(--navy-deep); border-color:transparent; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="index.html" class="back-link">&larr; Trekker</a>
+    <div class="brand"><div class="dot"></div><span>Bingo check</span></div>
+  </div>
+  <h1>Kaart checken</h1>
+  <div class="subtitle">Werkt volledig offline op dit toestel — geen internetverbinding nodig tussen de toestellen.</div>
+
+  <div class="panel step-panel">
+    <div class="trekking-status" id="trekkingStatus">
+      <span class="ts-label">Trekking: <span class="ts-count" id="trekkingCount">nog niet geladen</span></span>
+      <button id="rescanStateBtn" type="button">Trekking-QR scannen</button>
+    </div>
+
+    <div class="scan-video-wrap" id="scanVideoWrap">
+      <video id="scanVideo" playsinline muted></video>
+      <div class="scan-frame"></div>
+    </div>
+    <div class="scan-hint" id="scanHint">Richt de camera op een QR-code — de trekking-QR, de grote vel-QR, of de QR op een losse kaart. De app herkent zelf wat het is.</div>
+    <div class="scan-flash" id="scanFlash"></div>
+
+    <div id="cardResult"></div>
+
+    <div id="ticketPickerPane" style="display:none; margin-top:16px;">
+      <div class="scan-hint" style="margin-bottom:10px;">Dit vel heeft 6 kaarten — kies jouw kaartnummer:</div>
+      <div id="ticketPickerRow" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;"></div>
+      <div id="ticketPickerResult" style="margin-top:14px;"></div>
+    </div>
+
+    <div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--line);">
+      <div class="field" style="margin-bottom:10px;">
+        <label for="codeInput">Of typ de code onder de kaart in</label>
+        <input type="text" id="codeInput" placeholder="bv. K3F9P2-04" style="width:100%; text-transform:uppercase;">
+      </div>
+      <button class="btn gold" id="codeCheckBtn" style="width:100%;">Check</button>
+      <div id="codeResult"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const trekkingStatus = document.getElementById('trekkingStatus');
+  const trekkingCount = document.getElementById('trekkingCount');
+  const rescanStateBtn = document.getElementById('rescanStateBtn');
+
+  const scanVideo = document.getElementById('scanVideo');
+  const scanVideoWrap = document.getElementById('scanVideoWrap');
+  const scanHint = document.getElementById('scanHint');
+  const scanFlash = document.getElementById('scanFlash');
+  const cardResult = document.getElementById('cardResult');
+  const ticketPickerPane = document.getElementById('ticketPickerPane');
+  const ticketPickerRow = document.getElementById('ticketPickerRow');
+  const ticketPickerResult = document.getElementById('ticketPickerResult');
+  const codeInput = document.getElementById('codeInput');
+  const codeCheckBtn = document.getElementById('codeCheckBtn');
+  const codeResult = document.getElementById('codeResult');
+
+  let drawnSet = new Set();
+  let scanStream = null, scanRAF = null;
+  let lastKey = null;
+  let flashTimer = null;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  function updateTrekkingStatus(){
+    if(drawnSet.size > 0){
+      trekkingCount.textContent = drawnSet.size + ' nummer' + (drawnSet.size === 1 ? '' : 's') + ' geladen';
+      trekkingStatus.classList.add('loaded');
+    } else {
+      trekkingCount.textContent = 'nog niet geladen';
+      trekkingStatus.classList.remove('loaded');
+    }
+  }
+
+  function flash(msg, isBlocked){
+    scanFlash.textContent = msg;
+    scanFlash.classList.toggle('blocked', !!isBlocked);
+    if(flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => { scanFlash.textContent = ''; scanFlash.classList.remove('blocked'); }, 3000);
+  }
+
+  function vibrate(pattern){
+    if('vibrate' in navigator){
+      try{ navigator.vibrate(pattern); }catch(e){ /* stil negeren */ }
+    }
+  }
+
+  let pulseTimer = null;
+  function pulse(kind){
+    // kind: 'detect' | 'success' | 'blocked'
+    scanVideoWrap.classList.remove('detect-pulse', 'success-pulse', 'blocked-pulse');
+    // force reflow zodat de animatie opnieuw start bij snel achter elkaar scannen
+    void scanVideoWrap.offsetWidth;
+    scanVideoWrap.classList.add(kind + '-pulse');
+    if(pulseTimer) clearTimeout(pulseTimer);
+    pulseTimer = setTimeout(() => { scanVideoWrap.classList.remove(kind + '-pulse'); }, 350);
+
+    if(kind === 'detect') vibrate(30);
+    else if(kind === 'success') vibrate([25, 40, 25]);
+    else if(kind === 'blocked') vibrate([25, 60, 25, 60, 25]);
+  }
+
+  function updateStepHint(){
+    if(drawnSet.size === 0){
+      scanHint.textContent = 'Stap 1 van 2 — richt de camera op de trekking-QR. Kaart of vel scannen kan pas daarna.';
+      scanHint.classList.add('step-locked');
+    } else {
+      scanHint.textContent = 'Stap 2 van 2 — richt de camera nu op de vel-QR of de QR op een losse kaart.';
+      scanHint.classList.remove('step-locked');
+    }
+  }
+
+  /* Eén camera, herkent zelf elk QR-type: trekking (STATE), vel (STRIP) of kaart (CARD2/CARD legacy). */
+  function startScanCamera(){
+    lastKey = null;
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        scanStream = stream;
+        scanVideo.srcObject = stream;
+        scanVideo.play();
+        const tick = () => {
+          if(scanVideo.readyState === scanVideo.HAVE_ENOUGH_DATA){
+            canvas.width = scanVideo.videoWidth;
+            canvas.height = scanVideo.videoHeight;
+            ctx.drawImage(scanVideo, 0, 0, canvas.width, canvas.height);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imgData.data, imgData.width, imgData.height);
+            if(code && code.data && code.data !== lastKey){
+              handleScannedText(code.data);
+            }
+          }
+          scanRAF = requestAnimationFrame(tick);
+        };
+        scanRAF = requestAnimationFrame(tick);
+      })
+      .catch(() => { scanHint.textContent = 'Kon de camera niet openen. Geef camera-toegang toe in je browserinstellingen.'; });
+  }
+  function stopScanCamera(){
+    if(scanRAF){ cancelAnimationFrame(scanRAF); scanRAF = null; }
+    if(scanStream){ scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  }
+
+  function handleScannedText(data){
+    const nums = decodeStateQR(data);
+    const strip = !nums ? decodeStripQR(data) : null;
+    const card = (!nums && !strip) ? decodeCardQR(data) : null;
+
+    if(!nums && !strip && !card){
+      // Onherkende QR-inhoud (bv. van een andere app): stil negeren, geen foutmelding nodig
+      // want dit kan ook gewoon een QR zijn die toevallig in beeld komt terwijl je aan het richten bent.
+      return;
+    }
+
+    // Er is in elk geval een geldige bingo-QR gevonden — altijd meteen merkbare feedback geven.
+    lastKey = data;
+    pulse('detect');
+
+    if(nums){
+      drawnSet = new Set(nums);
+      updateTrekkingStatus();
+      updateStepHint();
+      pulse('success');
+      flash('Trekking geladen: ' + drawnSet.size + ' nummers.');
+      return;
+    }
+
+    if(drawnSet.size === 0){
+      // Kaart of vel gescand vóór de trekking-QR: nog niet toestaan, duidelijk aangeven wat wél moet.
+      pulse('blocked');
+      flash('Scan eerst de trekking-QR voordat je een kaart checkt.', true);
+      return;
+    }
+
+    if(strip){
+      cardResult.innerHTML = '';
+      pulse('success');
+      showTicketPicker(strip);
+      return;
+    }
+    if(card){
+      ticketPickerPane.style.display = 'none';
+      pulse('success');
+      showCardResult(card);
+      return;
+    }
+  }
+
+  function showTicketPicker(strip){
+    scanHint.textContent = 'Vel gescand — kies hieronder jouw kaartnummer.';
+    ticketPickerPane.style.display = 'block';
+    ticketPickerRow.innerHTML = '';
+    ticketPickerResult.innerHTML = '';
+    strip.tickets.forEach((ticket) => {
+      const btn = document.createElement('button');
+      btn.className = 'ticket-btn';
+      btn.textContent = String(ticket.ticketIndex + 1).padStart(2, '0');
+      btn.onclick = () => {
+        ticketPickerRow.querySelectorAll('.ticket-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const res = checkCardAgainstDrawn(ticket, drawnSet);
+        ticketPickerResult.innerHTML = renderCheckResultHTML(res, ticket, drawnSet);
+      };
+      ticketPickerRow.appendChild(btn);
+    });
+  }
+
+  function showCardResult(card){
+    scanHint.textContent = 'Kaart gescand.';
+    const res = checkCardAgainstDrawn(card, drawnSet);
+    cardResult.innerHTML = renderCheckResultHTML(res, card, drawnSet);
+  }
+
+  codeCheckBtn.onclick = () => {
+    const card = decodeTextCode(codeInput.value);
+    if(!card){
+      codeResult.innerHTML = '<div class="scan-hint">Ongeldige code. Controleer de spelling (bv. K3F9P2-04).</div>';
+      return;
+    }
+    const res = checkCardAgainstDrawn(card, drawnSet);
+    codeResult.innerHTML = renderCheckResultHTML(res, card, drawnSet);
+  };
+
+  rescanStateBtn.onclick = () => {
+    drawnSet = new Set();
+    updateTrekkingStatus();
+    updateStepHint();
+    flash('Richt de camera nu op de trekking-QR.');
+  };
+
+  updateTrekkingStatus();
+  updateStepHint();
+
+  /* Als er een ?state=<STATE:...>-link is gedeeld (i.p.v. een schermfoto scannen), direct laden. */
+  const params = new URLSearchParams(window.location.search);
+  const stateParam = params.get('state');
+  if(stateParam){
+    const nums = decodeStateQR(decodeURIComponent(stateParam));
+    if(nums){
+      drawnSet = new Set(nums);
+      updateTrekkingStatus();
+      updateStepHint();
+      flash('Trekking geladen via link: ' + drawnSet.size + ' nummers.');
+    }
+  }
+
+  startScanCamera();
+})();
+</script>
+</body>
+</html>
