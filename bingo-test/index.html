@@ -396,6 +396,13 @@
   .variant-opt.active{ border-color: var(--gold); background: linear-gradient(180deg, rgba(212,175,55,0.18), rgba(212,175,55,0.05)); }
   .variant-opt.active .v-title{ color: var(--gold-soft); }
 
+  #speechOverlay{
+    display:none; position:fixed; inset:0; z-index:610;
+    background: rgba(6,13,26,0.82);
+    align-items:center; justify-content:center; padding:16px;
+  }
+  #speechOverlay.active{ display:flex; }
+
   .lang-grid{ display:flex; flex-wrap:wrap; gap:8px; }
   .lang-btn{
     flex:1 1 28%; min-width:88px; text-align:center; padding:9px 8px; border-radius:10px;
