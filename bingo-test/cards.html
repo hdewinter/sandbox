@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bingokaarten maken</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="bingo-common.js"></script>
+<script src="vendor-qrcode.min.js"></script>
+<style>
+  body{ padding: 20px; }
+  .wrap{ max-width: 1100px; margin: 0 auto; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+  .back-link{ color:var(--gold-soft); font-family:'Oswald',sans-serif; font-size:13px; text-decoration:none; letter-spacing:0.05em; text-transform:uppercase; }
+  h1{ font-size: clamp(24px,4vw,34px); margin: 10px 0 20px 0; }
+
+  .gen-panel{ padding:22px; margin-bottom:24px; }
+  .variant-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .variant-btn{
+    flex:1; min-width:150px; text-align:left; padding:12px 14px; border-radius:10px;
+    border:1px solid var(--line); background:transparent; color:var(--cream); cursor:pointer;
+    font-family:'Oswald',sans-serif;
+  }
+  .variant-btn .v-title{ font-weight:700; font-size:13px; letter-spacing:0.03em; }
+  .variant-btn .v-sub{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .variant-btn.active{ border-color: var(--gold); background: linear-gradient(180deg, rgba(212,175,55,0.18), rgba(212,175,55,0.05)); }
+  .variant-btn.active .v-title{ color: var(--gold-soft); }
+  .variant-desc{ font-size:13px; color:var(--muted); font-family:'Inter',sans-serif; margin-bottom:18px; line-height:1.5; }
+
+  .gen-row{ display:flex; gap:20px; flex-wrap:wrap; align-items:flex-end; }
+  .gen-field{ flex:1; min-width:160px; }
+  .gen-field input{ width:100%; }
+  .gen-error{ color:#ff8484; font-size:13px; margin-top:10px; min-height:16px; }
+
+  .actions-row{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px; align-items:center; }
+
+  /* Strip = 1 A4-vel */
+  .strip-block{ margin-bottom:34px; }
+  .strip-title{
+    font-family:'Oswald', sans-serif; font-weight:700; font-size:13px; letter-spacing:0.08em; text-transform:uppercase;
+    color: var(--gold-soft); margin-bottom:12px;
+  }
+  .strip-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:16px; }
+
+  .strip-qr-header{
+    background:#fff; border-radius:12px; padding:14px 18px;
+    display:flex; align-items:center; gap:16px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    margin-bottom:16px;
+  }
+  .strip-qr-wrap{ flex-shrink:0; line-height:0; }
+  .strip-qr-wrap canvas{ display:block; }
+  .strip-qr-label{
+    font-family:'Oswald',sans-serif; font-weight:600; font-size:13px; color:#0a1730; line-height:1.4;
+  }
+  .strip-qr-label strong{ font-family:'Anton',sans-serif; font-size:22px; letter-spacing:0.05em; color:#8f1526; }
+
+  .bingo-card{
+    background:#fff; color:#0a1730; border-radius:12px; padding:12px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    width:100%; max-width:100%;
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+  .bingo-card .card-label{
+    font-family:'Oswald', sans-serif; font-weight:700; font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    color:#8f1526; margin-bottom:6px; text-align:center;
+  }
+  .bingo-header-row{ display:grid; gap:0; margin-bottom:0; border-top:1.5px solid #0a1730; border-left:1.5px solid #0a1730; }
+  .bingo-header-cell{
+    text-align:center; font-family:'Anton',sans-serif; font-size: clamp(11px,1.6vw,15px);
+    color:#8f1526; letter-spacing:0.05em; padding:3px 0;
+    border-right:1.5px solid #0a1730; border-bottom:1.5px solid #0a1730;
+  }
+  .bingo-grid{
+    display:grid; gap:0;
+    border-top:1.5px solid #0a1730; border-left:1.5px solid #0a1730;
+    width:100%; box-sizing:border-box;
+  }
+  .bingo-cell{
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    border-right:1.5px solid #0a1730; border-bottom:1.5px solid #0a1730;
+    background:#fff;
+    font-family:'Oswald', sans-serif; font-weight:700; font-size: clamp(9px, 1.4vw, 13px);
+    color:#0a1730;
+    min-width:0; min-height:0; width:100%; box-sizing:border-box;
+    overflow:hidden;
+  }
+  .bingo-cell.empty{ background:#fff; }
+  .bingo-cell.free{ background:#e4d9b8; color:#8f1526; font-size:8px; letter-spacing:0.04em; }
+  .bingo-cell.qr{ background:#0a1730; padding:1px; display:flex; align-items:center; justify-content:center; }
+  .bingo-cell.qr canvas{ width:100% !important; height:100% !important; max-width:100%; max-height:100%; display:block; }
+  .bingo-cell.interactive{ cursor:pointer; user-select:none; transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease; }
+  .bingo-cell.interactive:active{ transform: scale(0.9); }
+  .bingo-cell.marked{
+    background: radial-gradient(circle at 32% 28%, #ff5b6e 0%, #c8203a 55%, #8f1526 100%) !important;
+    color:#fff !important;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35), 0 3px 8px rgba(200,32,58,0.45);
+    transform: rotate(-3deg) scale(0.96);
+  }
+  .eu90-card{ padding:14px; }
+  .eu90-card .card-label{ font-size:13px; margin-bottom:8px; }
+  .eu90-card .bingo-cell{ aspect-ratio: 1/1.2; font-size: clamp(12px, 2vw, 19px); }
+  .eu90-card .card-code{ font-size:11.5px; margin-top:9px; }
+  .card-qr-footer{ display:flex; justify-content:center; margin-top:8px; }
+  .card-qr-footer canvas{ width:56px !important; height:56px !important; }
+  .card-code{
+    text-align:center; margin-top:7px;
+    font-family:'Oswald', sans-serif; font-weight:600; font-size:10.5px; letter-spacing:0.08em;
+    color:#7c8fae;
+  }
+  .card-footer{ display:flex; justify-content:center; margin-top:8px; }
+  .card-footer button{
+    font-family:'Oswald',sans-serif; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; font-weight:600;
+    background:transparent; border:1px solid #c8203a33; color:#8f1526; border-radius:8px; padding:6px 10px; cursor:pointer;
+  }
+
+  /* Print-layout: N kaarten per A4 (2 kolommen), 1 vel per pagina */
+  .print-page{ display:none; }
+  @media print{
+    @page{ size: A4; margin: 8mm; }
+    body{ background:#fff !important; padding:0 !important; }
+    .no-print{ display:none !important; }
+    .bingo-card, .bingo-card *{
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    .print-page{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      grid-auto-rows: 1fr;
+      gap: 8mm;
+      width: 100%;
+      height: 100vh;
+      page-break-after: always;
+      break-after: page;
+      padding: 8mm;
+    }
+    .print-page .bingo-card{ box-shadow:none; border:1px solid #ccc; break-inside: avoid; }
+
+    .print-page.eu90-page{
+      display:flex; flex-direction:column;
+      grid-template-columns: none;
+      height:100vh; width:100%; padding:8mm; box-sizing:border-box;
+    }
+    .print-page.eu90-page .strip-qr-header{
+      box-shadow:none; border:1px solid #ccc; margin-bottom:6mm; flex-shrink:0;
+    }
+    .print-card-grid{
+      display:grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr;
+      gap: 6mm; flex:1; min-height:0;
+    }
+    .print-card-grid .bingo-card{ box-shadow:none; border:1px solid #ccc; break-inside: avoid; }
+  }
+
+  /* Digitale volledig-scherm weergave van 1 kaart */
+  #singleView{
+    display:none;
+    position:fixed; inset:0; z-index:1000;
+    background: radial-gradient(ellipse at 50% 0%, #142a4d 0%, var(--navy-deep) 60%);
+    align-items:center; justify-content:center; padding: 20px; overflow-y:auto;
+  }
+  #singleView.active{ display:flex; }
+  #singleView .bingo-card{ width:min(420px, 92vw); }
+  #singleView .bingo-cell{ font-size: clamp(13px, 3.2vw, 20px); }
+  #singleView .card-code{ font-size:13px; margin-top:12px; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="generatorView">
+  <div class="topbar no-print">
+    <a href="index.html" class="back-link">&larr; Terug naar trekker</a>
+    <div class="brand"><div class="dot"></div><span>Digitale bingotrekker 2.0</span></div>
+  </div>
+  <h1 class="no-print">Bingokaarten maken</h1>
+
+  <div class="panel gen-panel no-print">
+    <div class="variant-row" id="variantRow"></div>
+    <div class="variant-desc" id="variantDesc"></div>
+    <div class="gen-row">
+      <div class="gen-field">
+        <label for="countInput" id="countLabelField">Aantal A4-vellen (elk = 6 kaarten)</label>
+        <input type="number" id="countInput" value="4" min="1" max="300">
+      </div>
+      <button class="btn primary" id="generateBtn">Genereer kaarten</button>
+    </div>
+    <div class="gen-error" id="genError"></div>
+  </div>
+
+  <div class="actions-row no-print" id="actionsRow" style="display:none;">
+    <button class="btn gold" id="printBtn">Print / download PDF</button>
+    <span class="field hint" id="countLabel"></span>
+  </div>
+
+  <div id="stripsArea" class="no-print"></div>
+  <div id="printArea"></div>
+</div>
+
+<div id="singleView">
+  <div style="width:min(420px,92vw);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">
+      <button class="btn ghost" id="singleClose" style="padding:8px 14px; font-size:12px;">&larr; Sluiten</button>
+      <button class="btn ghost" id="clearMarksBtn" style="padding:8px 14px; font-size:12px;">Wis markeringen</button>
+      <button class="btn gold" id="singleShare" style="padding:8px 14px; font-size:12px;">Link kopiëren</button>
+    </div>
+    <div class="bingo-card" id="singleCard"></div>
+    <div class="field hint" id="shareHint" style="text-align:center; margin-top:12px;"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const variantRow = document.getElementById('variantRow');
+  const variantDesc = document.getElementById('variantDesc');
+  const countLabelField = document.getElementById('countLabelField');
+  const countInput = document.getElementById('countInput');
+  const generateBtn = document.getElementById('generateBtn');
+  const genError = document.getElementById('genError');
+  const stripsArea = document.getElementById('stripsArea');
+  const printArea = document.getElementById('printArea');
+  const actionsRow = document.getElementById('actionsRow');
+  const countLabel = document.getElementById('countLabel');
+  const printBtn = document.getElementById('printBtn');
+  const generatorView = document.getElementById('generatorView');
+  const singleView = document.getElementById('singleView');
+  const singleCard = document.getElementById('singleCard');
+  const singleClose = document.getElementById('singleClose');
+  const clearMarksBtn = document.getElementById('clearMarksBtn');
+  const singleShare = document.getElementById('singleShare');
+  const shareHint = document.getElementById('shareHint');
+
+  let currentVariant = BINGO_VARIANTS[DEFAULT_VARIANT_ID];
+  let currentSingleCard = null;
+  let currentMarks = new Set();
+
+  /* ---------- Variant-keuze ---------- */
+  Object.values(BINGO_VARIANTS).forEach(v => {
+    const btn = document.createElement('button');
+    btn.className = 'variant-btn' + (v.id === currentVariant.id ? ' active' : '');
+    btn.dataset.variant = v.id;
+    btn.innerHTML = '<div class="v-title">' + v.label + '</div><div class="v-sub">' + v.rows + 'x' + v.cols + ' \u00b7 ' + v.numbersPerCard + ' nummers</div>';
+    btn.onclick = () => selectVariant(v.id);
+    variantRow.appendChild(btn);
+  });
+
+  function selectVariant(id){
+    currentVariant = BINGO_VARIANTS[id];
+    variantRow.querySelectorAll('.variant-btn').forEach(b => b.classList.toggle('active', b.dataset.variant === id));
+    variantDesc.textContent = currentVariant.description;
+    countLabelField.textContent = currentVariant.id === 'eu90'
+      ? 'Aantal A4-vellen (elk = 6 kaarten)'
+      : 'Aantal kaarten (' + currentVariant.cardsPerPage + ' per A4-vel)';
+    const defaultCounts = { eu90: 4, speed30: 12 };
+    countInput.value = defaultCounts[currentVariant.id] ?? currentVariant.cardsPerPage;
+    stripsArea.innerHTML = ''; printArea.innerHTML = ''; actionsRow.style.display = 'none'; genError.textContent = '';
+    try{ localStorage.setItem('bingo2-variant', id); }catch(e){}
+  }
+  selectVariant(currentVariant.id);
+
+  /* ---------- Kaart-DOM opbouwen ---------- */
+  function buildCardDOM(card, globalIndex, variant, interactive){
+    const wrap = document.createElement('div');
+    wrap.className = 'bingo-card';
+    if(variant.id === 'eu90') wrap.classList.add('eu90-card');
+
+    const label = document.createElement('div');
+    label.className = 'card-label';
+    label.textContent = variant.id === 'eu90'
+      ? 'Kaart ' + String(card.ticketIndex + 1).padStart(2, '0')
+      : 'Kaart ' + (globalIndex + 1);
+    wrap.appendChild(label);
+
+    if(variant.columnLetters){
+      const headerRow = document.createElement('div');
+      headerRow.className = 'bingo-header-row';
+      headerRow.style.gridTemplateColumns = 'repeat(' + variant.cols + ', minmax(0,1fr))';
+      variant.columnLetters.forEach(l => {
+        const h = document.createElement('div');
+        h.className = 'bingo-header-cell';
+        h.textContent = l;
+        headerRow.appendChild(h);
+      });
+      wrap.appendChild(headerRow);
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'bingo-grid';
+    grid.style.gridTemplateColumns = 'repeat(' + variant.cols + ', minmax(0,1fr))';
+
+    for(let r=0;r<variant.rows;r++){
+      for(let c=0;c<variant.cols;c++){
+        const cell = document.createElement('div');
+        const val = card.grid[r][c];
+
+        if(val === 'FREE'){
+          cell.className = 'bingo-cell free';
+          cell.textContent = 'FREE';
+        } else if(val !== null){
+          cell.className = 'bingo-cell';
+          if(variant.columnColors){ cell.style.boxShadow = 'inset 0 3px 0 ' + variant.columnColors[c]; }
+          cell.textContent = val;
+          if(interactive){
+            cell.classList.add('interactive');
+            cell.dataset.number = val;
+            cell.addEventListener('click', () => toggleMark(cell));
+          }
+        } else {
+          cell.className = 'bingo-cell empty';
+        }
+        grid.appendChild(cell);
+      }
+    }
+    wrap.appendChild(grid);
+
+    const codeLine = document.createElement('div');
+    codeLine.className = 'card-code';
+    codeLine.textContent = 'Code: ' + card.code;
+    wrap.appendChild(codeLine);
+
+    if(variant.id !== 'eu90'){
+      const qrFooter = document.createElement('div');
+      qrFooter.className = 'card-qr-footer';
+      const qrCanvas = document.createElement('canvas');
+      qrFooter.appendChild(qrCanvas);
+      wrap.appendChild(qrFooter);
+      QRCode.toCanvas(qrCanvas, encodeCardQR(card), {
+        width: 90, margin: 0,
+        color: { dark: '#0a1730', light: '#ffffff' }
+      }, function(err){ if(err) console.error('QR error:', err); });
+    }
+
+    const footer = document.createElement('div');
+    footer.className = 'card-footer no-print';
+    const viewBtn = document.createElement('button');
+    viewBtn.textContent = 'Digitaal bekijken';
+    viewBtn.onclick = () => openSingleView(card, globalIndex, variant);
+    footer.appendChild(viewBtn);
+    wrap.appendChild(footer);
+
+    return wrap;
+  }
+
+  /* ---------- Gedeelde grote QR bovenaan een 90-bal vel ---------- */
+  function buildStripHeader(strip){
+    const header = document.createElement('div');
+    header.className = 'strip-qr-header';
+
+    const qrWrap = document.createElement('div');
+    qrWrap.className = 'strip-qr-wrap';
+    const canvas = document.createElement('canvas');
+    qrWrap.appendChild(canvas);
+    header.appendChild(qrWrap);
+
+    const label = document.createElement('div');
+    label.className = 'strip-qr-label';
+    const seedBody = seedToSafeCode(strip.seed);
+    const seedCode = seedBody + checksumChar(seedBody);
+    label.innerHTML = 'Scan voor kaart 01\u201306<br><strong>' + seedCode + '</strong>';
+    header.appendChild(label);
+
+    QRCode.toCanvas(canvas, encodeStripQR(strip.seed), {
+      width: 170, margin: 2,
+      color: { dark: '#0a1730', light: '#ffffff' }
+    }, function(err){ if(err) console.error('QR error:', err); });
+
+    return header;
+  }
+
+  function renderPages(pages){
+    stripsArea.innerHTML = '';
+    printArea.innerHTML = '';
+    let globalIndex = 0;
+    let totalCards = 0;
+
+    pages.forEach((pageCards, pi) => {
+      totalCards += pageCards.length;
+
+      const block = document.createElement('div');
+      block.className = 'strip-block';
+      const title = document.createElement('div');
+      title.className = 'strip-title';
+      title.textContent = 'A4-vel ' + (pi + 1) + ' \u2014 ' + pageCards.length + ' kaart' + (pageCards.length === 1 ? '' : 'en');
+      block.appendChild(title);
+
+      const sgrid = document.createElement('div');
+      sgrid.className = 'strip-grid';
+      pageCards.forEach((card) => {
+        sgrid.appendChild(buildCardDOM(card, globalIndex, currentVariant));
+        globalIndex++;
+      });
+      block.appendChild(sgrid);
+      stripsArea.appendChild(block);
+
+      const page = document.createElement('div');
+      page.className = 'print-page';
+      let printIdx = pi * currentVariant.cardsPerPage;
+      pageCards.forEach((card) => {
+        page.appendChild(buildCardDOM(card, printIdx, currentVariant));
+        printIdx++;
+      });
+      printArea.appendChild(page);
+    });
+
+    actionsRow.style.display = totalCards ? 'flex' : 'none';
+    countLabel.textContent = pages.length + ' vel' + (pages.length === 1 ? '' : 'len') + ' \u2014 ' + totalCards + ' kaarten totaal';
+  }
+
+  /* 90-bal: elk vel heeft 1 gedeelde grote QR bovenaan i.p.v. losse QR's per kaart. */
+  function renderEu90Pages(strips){
+    stripsArea.innerHTML = '';
+    printArea.innerHTML = '';
+    let totalCards = 0;
+
+    strips.forEach((strip, pi) => {
+      totalCards += strip.tickets.length;
+
+      const block = document.createElement('div');
+      block.className = 'strip-block';
+      const title = document.createElement('div');
+      title.className = 'strip-title';
+      title.textContent = 'A4-vel ' + (pi + 1) + ' \u2014 dekt volledig 1 t/m 90';
+      block.appendChild(title);
+      block.appendChild(buildStripHeader(strip));
+
+      const sgrid = document.createElement('div');
+      sgrid.className = 'strip-grid';
+      strip.tickets.forEach((card, i) => {
+        sgrid.appendChild(buildCardDOM(card, pi * 6 + i, currentVariant));
+      });
+      block.appendChild(sgrid);
+      stripsArea.appendChild(block);
+
+      const page = document.createElement('div');
+      page.className = 'print-page eu90-page';
+      page.appendChild(buildStripHeader(strip));
+      const pgrid = document.createElement('div');
+      pgrid.className = 'print-card-grid';
+      strip.tickets.forEach((card, i) => {
+        pgrid.appendChild(buildCardDOM(card, pi * 6 + i, currentVariant));
+      });
+      page.appendChild(pgrid);
+      printArea.appendChild(page);
+    });
+
+    actionsRow.style.display = totalCards ? 'flex' : 'none';
+    countLabel.textContent = strips.length + ' vel' + (strips.length === 1 ? '' : 'len') + ' \u2014 ' + totalCards + ' kaarten totaal';
+  }
+
+  generateBtn.onclick = () => {
+    const n = parseInt(countInput.value, 10);
+    if(!n || n < 1 || n > 300){ genError.textContent = 'Kies een geldig aantal (1 t/m 300).'; return; }
+    genError.textContent = '';
+    try{
+      if(currentVariant.id === 'eu90'){
+        const strips = generateStrips(n);
+        renderEu90Pages(strips);
+      } else {
+        const cards = generateCardsForVariant(currentVariant, n);
+        const pages = paginateCards(cards, currentVariant.cardsPerPage);
+        renderPages(pages);
+      }
+    }catch(err){
+      console.error('Kaartgeneratie mislukt:', err);
+      genError.textContent = 'Er ging iets mis bij het genereren van de kaarten. Probeer de pagina te herladen.';
+    }
+  };
+
+  printBtn.onclick = () => { window.print(); };
+
+  /* ---------- Markeringen (digitale weergave) ---------- */
+  function marksStorageKey(card){ return 'bingo2-marks:' + card.code; }
+  function loadMarks(card){
+    try{
+      const raw = localStorage.getItem(marksStorageKey(card));
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    }catch(e){ return new Set(); }
+  }
+  function saveMarks(card, marksSet){
+    try{ localStorage.setItem(marksStorageKey(card), JSON.stringify(Array.from(marksSet))); }catch(e){}
+  }
+  function toggleMark(cell){
+    const n = Number(cell.dataset.number);
+    if(currentMarks.has(n)){ currentMarks.delete(n); cell.classList.remove('marked'); }
+    else{ currentMarks.add(n); cell.classList.add('marked'); }
+    saveMarks(currentSingleCard, currentMarks);
+  }
+  function applyMarks(){
+    singleCard.querySelectorAll('.bingo-cell.interactive').forEach(cell => {
+      const n = Number(cell.dataset.number);
+      cell.classList.toggle('marked', currentMarks.has(n));
+    });
+  }
+
+  function openSingleView(card, index, variant){
+    currentSingleCard = card;
+    currentMarks = loadMarks(card);
+    singleCard.innerHTML = '';
+    const cardDOM = buildCardDOM(card, index, variant, true);
+    const footer = cardDOM.querySelector('.card-footer');
+    if(footer) footer.remove();
+    const qrFooters = cardDOM.querySelectorAll('.card-qr-footer');
+    qrFooters.forEach(f => f.remove());
+    singleCard.appendChild(cardDOM);
+    applyMarks();
+    shareHint.textContent = '';
+    singleView.classList.add('active');
+  }
+  singleClose.onclick = () => { singleView.classList.remove('active'); };
+  clearMarksBtn.onclick = () => {
+    if(!currentSingleCard) return;
+    currentMarks = new Set();
+    saveMarks(currentSingleCard, currentMarks);
+    applyMarks();
+  };
+  singleShare.onclick = () => {
+    if(!currentSingleCard) return;
+    const url = window.location.origin + window.location.pathname.replace('cards.html','') + 'cards.html?view=' + encodeURIComponent(encodeCardQR(currentSingleCard)) + '&code=' + encodeURIComponent(currentSingleCard.code);
+    navigator.clipboard.writeText(url).then(() => {
+      shareHint.textContent = 'Link gekopieerd \u2014 kan je delen met de speler.';
+    }).catch(() => { shareHint.textContent = url; });
+  };
+
+  /* ---------- Digitale losse weergave via URL: cards.html?view=<CARD2:...>&code=<code> ---------- */
+  const params = new URLSearchParams(window.location.search);
+  const viewParam = params.get('view');
+  if(viewParam){
+    const cardData = decodeCardQR(decodeURIComponent(viewParam));
+    if(cardData){
+      generatorView.style.display = 'none';
+      const variant = BINGO_VARIANTS[cardData.variantId] || BINGO_VARIANTS.eu90;
+      const fakeCard = { variantId: cardData.variantId, grid: cardData.grid, code: params.get('code') || '\u2014' };
+      openSingleView(fakeCard, 0, variant);
+    }
+  }
+})();
+</script>
+</body>
+</html>
