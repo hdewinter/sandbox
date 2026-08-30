@@ -95,6 +95,7 @@
     <div class="scan-flash" id="scanFlash"></div>
 
     <div id="cardResult"></div>
+    <button id="resetCheckBtn" type="button" class="btn" style="width:100%; margin-top:10px; display:none;">🔄 Opnieuw checken (nieuwe kaart of update)</button>
 
     <div id="ticketPickerPane" style="display:none; margin-top:16px;">
       <div class="scan-hint" style="margin-bottom:10px;">Dit vel heeft 6 kaarten — kies jouw kaartnummer:</div>
@@ -124,6 +125,7 @@
   const scanHint = document.getElementById('scanHint');
   const scanFlash = document.getElementById('scanFlash');
   const cardResult = document.getElementById('cardResult');
+  const resetCheckBtn = document.getElementById('resetCheckBtn');
   const ticketPickerPane = document.getElementById('ticketPickerPane');
   const ticketPickerRow = document.getElementById('ticketPickerRow');
   const ticketPickerResult = document.getElementById('ticketPickerResult');
@@ -251,15 +253,27 @@
       cardResult.innerHTML = '';
       pulse('success');
       showTicketPicker(strip);
+      resetCheckBtn.style.display = 'block';
       return;
     }
     if(card){
       ticketPickerPane.style.display = 'none';
       pulse('success');
       showCardResult(card);
+      resetCheckBtn.style.display = 'block';
       return;
     }
   }
+
+  function resetCheckState(){
+    lastKey = null;
+    cardResult.innerHTML = '';
+    ticketPickerPane.style.display = 'none';
+    resetCheckBtn.style.display = 'none';
+    updateStepHint();
+    flash('Klaar om een nieuwe kaart te checken.');
+  }
+  resetCheckBtn.onclick = resetCheckState;
 
   function showTicketPicker(strip){
     scanHint.textContent = 'Vel gescand — kies hieronder jouw kaartnummer.';
@@ -298,6 +312,10 @@
 
   rescanStateBtn.onclick = () => {
     drawnSet = new Set();
+    lastKey = null;
+    cardResult.innerHTML = '';
+    ticketPickerPane.style.display = 'none';
+    resetCheckBtn.style.display = 'none';
     updateTrekkingStatus();
     updateStepHint();
     flash('Richt de camera nu op de trekking-QR.');
