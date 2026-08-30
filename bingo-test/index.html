@@ -598,6 +598,7 @@
       </div>
       <button class="btn gold" id="codeCheckBtn" style="width:100%;">Check</button>
       <div id="codeResult"></div>
+      <button id="codeRefreshBtn" type="button" class="btn" style="width:100%; margin-top:10px; display:none;">🔄 Vernieuwen (check opnieuw tegen huidige stand)</button>
       <div class="scan-hint" style="margin-top:16px;">
         Liever de QR-code op de kaart zelf scannen? Gebruik <a href="scan.html" target="_blank" style="color:var(--gold-soft);">de scanner</a> op je eigen telefoon — dan blijft dit trekkerscherm gewoon zichtbaar voor iedereen.
       </div>
@@ -697,6 +698,7 @@
   const codeInput = document.getElementById('codeInput');
   const codeCheckBtn = document.getElementById('codeCheckBtn');
   const codeResult = document.getElementById('codeResult');
+  const codeRefreshBtn = document.getElementById('codeRefreshBtn');
   const qrStateCanvas = document.getElementById('qrStateCanvas');
   const qrStateCount = document.getElementById('qrStateCount');
   const copyStateLinkBtn = document.getElementById('copyStateLinkBtn');
@@ -1200,6 +1202,8 @@
   /* ==================== Check-modal ==================== */
   function openCheckModal(){
     checkOverlay.classList.add('active');
+    lastCheckedCard = null;
+    codeRefreshBtn.style.display = 'none';
     switchTab('code');
   }
   function closeCheckModal(){
@@ -1209,6 +1213,8 @@
   checkClose.onclick = closeCheckModal;
   checkOverlay.addEventListener('click', (e) => { if(e.target === checkOverlay) closeCheckModal(); });
 
+  let lastCheckedCard = null;
+
   function switchTab(which){
     tabCode.classList.toggle('active', which === 'code');
     tabState.classList.toggle('active', which === 'state');
@@ -1216,7 +1222,7 @@
     statePane.style.display = which === 'state' ? 'block' : 'none';
 
     if(which === 'state'){ renderStateQR(); }
-    else if(which === 'code'){ codeResult.innerHTML = ''; codeInput.value = ''; }
+    else if(which === 'code'){ codeResult.innerHTML = ''; codeInput.value = ''; codeRefreshBtn.style.display = 'none'; lastCheckedCard = null; }
   }
   tabCode.onclick = () => switchTab('code');
   tabState.onclick = () => switchTab('state');
@@ -1225,10 +1231,20 @@
     const card = decodeTextCode(codeInput.value);
     if(!card){
       codeResult.innerHTML = '<div class="scan-hint">Ongeldige code. Controleer de spelling (bv. K3F9P2-04).</div>';
+      codeRefreshBtn.style.display = 'none';
+      lastCheckedCard = null;
       return;
     }
+    lastCheckedCard = card;
     const res = checkCardAgainstDrawn(card, called);
     codeResult.innerHTML = renderCheckResultHTML(res, card, called);
+    codeRefreshBtn.style.display = 'block';
+  };
+
+  codeRefreshBtn.onclick = () => {
+    if(!lastCheckedCard) return;
+    const res = checkCardAgainstDrawn(lastCheckedCard, called);
+    codeResult.innerHTML = renderCheckResultHTML(res, lastCheckedCard, called);
   };
 
   function renderStateQR(){
