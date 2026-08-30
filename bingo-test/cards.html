@@ -143,22 +143,20 @@
 
     .print-page.eu90-page{
       display:flex; flex-direction:column;
-      grid-template-columns: none;
-      height:100vh; width:100%; padding:8mm; box-sizing:border-box;
+      width:194mm; height:281mm; padding:8mm; box-sizing:border-box; gap:0;
     }
     .print-page.eu90-page .strip-qr-header{
       box-shadow:none; border:1px solid #ccc; margin-bottom:5mm; flex-shrink:0;
       align-self:flex-end; width:fit-content;
     }
     .print-card-grid{
-      display:flex; flex-direction:column; gap:2mm; flex:1; min-height:0;
+      display:flex; flex-direction:column; gap:2mm;
     }
     .print-card-row{
-      display:flex; align-items:center; gap:3mm; flex:1 1 0; min-height:0;
+      display:flex; align-items:center; gap:3mm; height:32mm; flex-shrink:0;
     }
-    .print-card-row .print-row-grid{ flex:1 1 auto; height:100%; display:flex; align-items:center; min-width:0; }
-    .print-card-row .print-row-grid .bingo-grid{ height:100%; width:100%; }
-    .print-card-row .print-row-grid .bingo-cell{ aspect-ratio:1/1; height:100%; width:auto; }
+    .print-card-row .print-row-grid{ display:flex; align-items:center; min-width:0; }
+    .print-card-row .print-row-grid .bingo-cell{ font-size:8.5pt; }
     .print-card-row .print-row-meta{
       flex:0 0 14mm; display:flex; flex-direction:row; justify-content:center; align-items:center; gap:2mm; height:100%;
     }
@@ -369,7 +367,8 @@
     gridWrap.className = 'print-row-grid';
     const grid = document.createElement('div');
     grid.className = 'bingo-grid';
-    grid.style.gridTemplateColumns = 'repeat(' + currentVariant.cols + ', minmax(0,1fr))';
+    grid.style.gridTemplateColumns = 'repeat(' + currentVariant.cols + ', 9.5mm)';
+    grid.style.width = 'fit-content';
     for(let r=0;r<currentVariant.rows;r++){
       for(let c=0;c<currentVariant.cols;c++){
         const cell = document.createElement('div');
