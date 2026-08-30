@@ -147,13 +147,29 @@
       height:100vh; width:100%; padding:8mm; box-sizing:border-box;
     }
     .print-page.eu90-page .strip-qr-header{
-      box-shadow:none; border:1px solid #ccc; margin-bottom:6mm; flex-shrink:0;
+      box-shadow:none; border:1px solid #ccc; margin-bottom:5mm; flex-shrink:0;
+      align-self:flex-end; width:fit-content;
     }
     .print-card-grid{
-      display:grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr;
-      gap: 6mm; flex:1; min-height:0;
+      display:flex; flex-direction:column; gap:2mm; flex:1; min-height:0;
     }
-    .print-card-grid .bingo-card{ box-shadow:none; border:1px solid #ccc; break-inside: avoid; }
+    .print-card-row{
+      display:flex; align-items:center; gap:3mm; flex:1 1 0; min-height:0;
+    }
+    .print-card-row .print-row-grid{ flex:1 1 auto; height:100%; display:flex; align-items:center; min-width:0; }
+    .print-card-row .print-row-grid .bingo-grid{ height:100%; width:100%; }
+    .print-card-row .print-row-grid .bingo-cell{ aspect-ratio:1/1; height:100%; width:auto; }
+    .print-card-row .print-row-meta{
+      flex:0 0 14mm; display:flex; flex-direction:row; justify-content:center; align-items:center; gap:2mm; height:100%;
+    }
+    .print-row-label{
+      font-family:'Oswald', sans-serif; font-weight:700; font-size:11px; letter-spacing:0.04em; text-transform:uppercase;
+      color:#8f1526; writing-mode: vertical-rl; text-orientation:mixed; white-space:nowrap;
+    }
+    .print-row-code{
+      font-family:'Oswald', sans-serif; font-weight:600; font-size:8px; letter-spacing:0.02em;
+      color:#7c8fae; writing-mode: vertical-rl; text-orientation:mixed; white-space:nowrap;
+    }
   }
 
   /* Digitale volledig-scherm weergave van 1 kaart */
@@ -344,6 +360,44 @@
     return wrap;
   }
 
+  /* ---------- 90-bal print: kaarten onder elkaar, rooster + smalle rand met kaartnummer/code ---------- */
+  function buildEu90PrintRow(card){
+    const row = document.createElement('div');
+    row.className = 'print-card-row';
+
+    const gridWrap = document.createElement('div');
+    gridWrap.className = 'print-row-grid';
+    const grid = document.createElement('div');
+    grid.className = 'bingo-grid';
+    grid.style.gridTemplateColumns = 'repeat(' + currentVariant.cols + ', minmax(0,1fr))';
+    for(let r=0;r<currentVariant.rows;r++){
+      for(let c=0;c<currentVariant.cols;c++){
+        const cell = document.createElement('div');
+        const val = card.grid[r][c];
+        if(val === 'FREE'){ cell.className = 'bingo-cell free'; cell.textContent = 'FREE'; }
+        else if(val !== null){ cell.className = 'bingo-cell'; cell.textContent = val; }
+        else{ cell.className = 'bingo-cell empty'; }
+        grid.appendChild(cell);
+      }
+    }
+    gridWrap.appendChild(grid);
+    row.appendChild(gridWrap);
+
+    const meta = document.createElement('div');
+    meta.className = 'print-row-meta';
+    const label = document.createElement('div');
+    label.className = 'print-row-label';
+    label.textContent = 'Kaart ' + String(card.ticketIndex + 1).padStart(2, '0');
+    meta.appendChild(label);
+    const code = document.createElement('div');
+    code.className = 'print-row-code';
+    code.textContent = card.code;
+    meta.appendChild(code);
+    row.appendChild(meta);
+
+    return row;
+  }
+
   /* ---------- Gedeelde grote QR bovenaan een 90-bal vel ---------- */
   function buildStripHeader(strip){
     const header = document.createElement('div');
@@ -439,8 +493,8 @@
       page.appendChild(buildStripHeader(strip));
       const pgrid = document.createElement('div');
       pgrid.className = 'print-card-grid';
-      strip.tickets.forEach((card, i) => {
-        pgrid.appendChild(buildCardDOM(card, pi * 6 + i, currentVariant));
+      strip.tickets.forEach((card) => {
+        pgrid.appendChild(buildEu90PrintRow(card));
       });
       page.appendChild(pgrid);
       printArea.appendChild(page);
