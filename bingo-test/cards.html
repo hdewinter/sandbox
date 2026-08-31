@@ -15,6 +15,18 @@
   .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
   .back-link{ color:var(--gold-soft); font-family:'Oswald',sans-serif; font-size:13px; text-decoration:none; letter-spacing:0.05em; text-transform:uppercase; }
   h1{ font-size: clamp(24px,4vw,34px); margin: 10px 0 20px 0; }
+  .header-banner{
+    position:relative; width:100%; border-radius:16px; overflow:hidden; margin:10px 0 20px 0;
+    aspect-ratio: 1400/933;
+  }
+  .header-banner img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .header-banner .banner-text{
+    position:absolute; top:6%; left:0; right:0; text-align:center;
+    font-family:'Anton', sans-serif; letter-spacing:0.06em; text-transform:uppercase;
+    font-size: clamp(20px, 4.5vw, 44px);
+    color:#d4af37;
+    text-shadow: 0 2px 6px rgba(10,20,40,0.35), 0 0 1px rgba(10,20,40,0.5);
+  }
 
   .gen-panel{ padding:22px; margin-bottom:24px; }
   .variant-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
@@ -193,6 +205,12 @@
     <a href="index.html" class="back-link">&larr; Terug naar trekker</a>
     <div class="brand"><div class="dot"></div><span>Digitale bingotrekker 2.0</span></div>
   </div>
+
+  <div class="header-banner no-print">
+    <img src="header-winter.jpg" alt="Bingo">
+    <div class="banner-text">Bingo</div>
+  </div>
+
   <h1 class="no-print">Bingokaarten maken</h1>
 
   <div class="panel gen-panel no-print">
