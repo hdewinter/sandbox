@@ -156,7 +156,7 @@
       display:flex; flex-direction:column; gap:1.2mm;
     }
     .print-card-row{
-      display:flex; align-items:center; gap:4mm; height:37.5mm; flex-shrink:0;
+      display:flex; align-items:center; gap:4mm; height:38mm; flex-shrink:0;
     }
     .print-card-row .print-row-grid{ display:flex; align-items:center; min-width:0; }
     .print-card-row .print-row-grid .bingo-cell{ aspect-ratio:auto; font-size:10.5pt; }
@@ -370,8 +370,8 @@
     gridWrap.className = 'print-row-grid';
     const grid = document.createElement('div');
     grid.className = 'bingo-grid';
-    grid.style.gridTemplateColumns = 'repeat(' + currentVariant.cols + ', 18mm)';
-    grid.style.gridAutoRows = '12.2mm';
+    grid.style.gridTemplateColumns = 'repeat(' + currentVariant.cols + ', 12.3mm)';
+    grid.style.gridAutoRows = '12.3mm';
     grid.style.width = 'fit-content';
     for(let r=0;r<currentVariant.rows;r++){
       for(let c=0;c<currentVariant.cols;c++){
