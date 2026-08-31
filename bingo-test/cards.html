@@ -146,13 +146,14 @@
       width:194mm; height:281mm; padding:8mm; box-sizing:border-box; gap:0;
     }
     .print-page.eu90-page .strip-qr-header{
-      box-shadow:none; border:1px solid #ccc; margin-bottom:3mm; flex-shrink:0;
-      align-self:flex-end; width:fit-content; padding:8px 12px; gap:10px;
+      box-shadow:none; border:1px solid #ccc; margin-bottom:2mm; flex-shrink:0;
+      align-self:flex-end; width:fit-content;
+      flex-direction:column; align-items:center; gap:4px; padding:6px 10px;
     }
-    .print-page.eu90-page .strip-qr-label{ font-size:11px; }
-    .print-page.eu90-page .strip-qr-label strong{ font-size:17px; }
+    .print-page.eu90-page .strip-qr-label{ text-align:center; font-size:10px; }
+    .print-page.eu90-page .strip-qr-label strong{ font-size:15px; }
     .print-card-grid{
-      display:flex; flex-direction:column; gap:2mm;
+      display:flex; flex-direction:column; gap:1.5mm;
     }
     .print-card-row{
       display:flex; align-items:center; gap:3mm; height:35mm; flex-shrink:0;
@@ -369,7 +370,7 @@
     gridWrap.className = 'print-row-grid';
     const grid = document.createElement('div');
     grid.className = 'bingo-grid';
-    grid.style.gridTemplateColumns = 'repeat(' + currentVariant.cols + ', 11.5mm)';
+    grid.style.gridTemplateColumns = 'repeat(' + currentVariant.cols + ', 11.4mm)';
     grid.style.width = 'fit-content';
     for(let r=0;r<currentVariant.rows;r++){
       for(let c=0;c<currentVariant.cols;c++){
@@ -491,7 +492,7 @@
 
       const page = document.createElement('div');
       page.className = 'print-page eu90-page';
-      page.appendChild(buildStripHeader(strip, 128));
+      page.appendChild(buildStripHeader(strip, 115));
       const pgrid = document.createElement('div');
       pgrid.className = 'print-card-grid';
       strip.tickets.forEach((card) => {
