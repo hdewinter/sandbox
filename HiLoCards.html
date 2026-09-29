@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="nl" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoger of Lager Kaartspel</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at center, #065f46 0%, #022c22 100%);
+            color: #f3f4f6;
+            min-height: 100vh;
+            overflow-y: hidden; /* Prevent vertical scrolling */
+        }
+        /* Custom card 3D flip animations */
+        .card-container {
+            perspective: 1000px;
+        }
+        .card-inner {
+            transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+        .card-inner.flip {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            backface-visibility: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-between items-center h-screen py-2 px-3 md:py-3 md:px-4">
+
+    <header class="w-full max-w-lg text-center flex-shrink-0">
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-emerald-400 drop-shadow-md">
+            Hoger of Lager
+        </h1>
+        <p class="text-xs text-emerald-200/80 font-bold">
+            Raad of de volgende verborgen kaart hoger of lager is!
+        </p>
+    </header>
+
+    <main id="game-container" class="w-full max-w-md bg-slate-900/85 backdrop-blur-md border border-emerald-500/30 rounded-2xl p-4 shadow-2xl flex flex-col items-center justify-between my-auto flex-shrink-0">
+        
+        <!-- Stats Bar -->
+        <div class="w-full flex justify-around items-center bg-slate-800/90 border border-slate-700/60 rounded-xl py-2 px-3 mb-3 shadow-inner">
+            <div class="text-center">
+                <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-extrabold">Punten</span>
+                <span id="score-display" class="text-xl md:text-2xl font-extrabold text-emerald-400">0</span>
+            </div>
+            <div class="text-center">
+                <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-extrabold">Resterend</span>
+                <span id="deck-count" class="text-xl md:text-2xl font-extrabold text-amber-400">52</span>
+            </div>
+            <div class="text-center">
+                <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-extrabold">Streak</span>
+                <span id="streak-display" class="text-xl md:text-2xl font-extrabold text-sky-400">0</span>
+            </div>
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box" class="w-full bg-slate-800/70 border border-slate-700 rounded-lg py-1.5 px-3 mb-3 text-center text-xs md:text-sm font-extrabold text-slate-200 transition-all duration-300">
+            Kies of de volgende kaart hoger of lager is dan de huidige kaart!
+        </div>
+
+        <div class="flex justify-center items-center gap-4 w-full my-1">
+            
+            <!-- Current Active Card -->
+            <div class="flex flex-col items-center">
+                <span class="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold mb-1">Huidige Kaart</span>
+                <div class="w-24 h-36 md:w-28 md:h-40 bg-white rounded-xl shadow-lg border-2 border-slate-200 flex flex-col justify-between p-3 relative text-slate-800 font-extrabold select-none">
+                    <div id="current-top" class="text-base md:text-lg leading-none">?</div>
+                    <div id="current-center" class="text-3xl md:text-4xl text-center self-center my-auto">♠</div>
+                    <div id="current-bottom" class="text-base md:text-lg leading-none self-end rotate-180">?</div>
+                </div>
+            </div>
+
+            <!-- VS Badge -->
+            <div class="flex items-center justify-center">
+                <div class="w-9 h-9 rounded-full bg-emerald-600/30 border border-emerald-400/50 flex items-center justify-center font-extrabold text-emerald-300 text-xs tracking-wider shadow">
+                    VS
+                </div>
+            </div>
+
+            <!-- Hidden Deck Pile (Next Card Face Down) -->
+            <div class="flex flex-col items-center">
+                <span class="text-[10px] uppercase tracking-wider text-slate-400 font-extrabold mb-1">Volgende Kaart</span>
+                <div class="card-container w-24 h-36 md:w-28 md:h-40 relative">
+                    <div id="card-inner-el" class="card-inner w-full h-full relative rounded-xl shadow-lg">
+                        <!-- Front Face (Revealed during animation) -->
+                        <div id="next-front" class="card-face card-front bg-white rounded-xl border-2 border-slate-200 flex flex-col justify-between p-3 text-slate-800 font-extrabold select-none">
+                            <div id="next-top" class="text-base md:text-lg leading-none">?</div>
+                            <div id="next-center" class="text-3xl md:text-4xl text-center self-center my-auto">♠</div>
+                            <div id="next-bottom" class="text-base md:text-lg leading-none self-end rotate-180">?</div>
+                        </div>
+                        <!-- Back Face (Visible before guess - hidden from player view) -->
+                        <div class="card-face card-back bg-gradient-to-br from-red-700 to-red-900 rounded-xl border-2 border-white/80 flex items-center justify-center shadow-lg">
+                            <div class="w-16 h-24 border border-dashed border-white/40 rounded flex items-center justify-center">
+                                <span class="text-white/80 font-extrabold text-sm tracking-widest">HL</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="controls-area" class="w-full grid grid-cols-3 gap-2 mt-4">
+            <button onclick="guess('lower')" id="btn-lower" class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-extrabold py-2.5 px-3 rounded-xl shadow border border-amber-500/40 active:scale-95 transition-all flex flex-col items-center justify-center">
+                <span class="text-sm md:text-base">📉 Lager</span>
+            </button>
+            <button onclick="guess('higher')" id="btn-higher" class="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-extrabold py-2.5 px-3 rounded-xl shadow border border-emerald-500/40 active:scale-95 transition-all flex flex-col items-center justify-center">
+                <span class="text-sm md:text-base">📈 Hoger</span>
+            </button>
+            <button onclick="cashOut()" id="btn-stop" class="bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-white font-extrabold py-2.5 px-3 rounded-xl shadow border border-slate-600/40 active:scale-95 transition-all flex flex-col items-center justify-center">
+                <span class="text-sm md:text-base">💰 Stoppen</span>
+            </button>
+        </div>
+
+        <div id="restart-container" class="w-full mt-4 hidden">
+            <button onclick="initGame()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold py-3 px-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.01] text-base tracking-wide border border-emerald-300">
+                🔄 Opnieuw Spelen
+            </button>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-lg text-center text-[10px] md:text-xs text-emerald-200/60 font-extrabold flex-shrink-0">
+        <p>Aas = Hoog (14) • Leeg deck = Score x2 • Fout geraden = Alles kwijt</p>
+    </footer>
+
+    <script>
+        let deck = [];
+        let currentCard = null;
+        let nextCard = null;
+        let score = 0;
+        let streak = 0;
+        let gameActive = true;
+
+        const suits = [
+            { symbol: '♠', color: 'text-slate-950' },
+            { symbol: '♣', color: 'text-slate-950' },
+            { symbol: '♥', color: 'text-red-600' },
+            { symbol: '♦', color: 'text-red-600' }
+        ];
+
+        const valueNames = {
+            2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
+            11: 'J', 12: 'Q', 13: 'K', 14: 'A'
+        };
+
+        function createDeck() {
+            let newDeck = [];
+            for (let val = 2; val <= 14; val++) {
+                for (let s = 0; s < suits.length; s++) {
+                    newDeck.push({
+                        value: val,
+                        name: valueNames[val],
+                        suit: suits[s].symbol,
+                        color: suits[s].color
+                    });
+                }
+            }
+            // Fisher-Yates shuffle
+            for (let i = newDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+            }
+            return newDeck;
+        }
+
+        function initGame() {
+            deck = createDeck();
+            score = 0;
+            streak = 0;
+            gameActive = true;
+
+            currentCard = deck.pop();
+            nextCard = deck.pop();
+
+            document.getElementById('controls-area').classList.remove('hidden');
+            document.getElementById('restart-container').classList.add('hidden');
+            
+            const cardInner = document.getElementById('card-inner-el');
+            cardInner.style.transition = 'none';
+            cardInner.classList.add('flip'); // Start back face shown
+            void cardInner.offsetWidth;
+            cardInner.style.transition = 'transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1)';
+
+            updateUI();
+            setMessage("Kies of de volgende verborgen kaart hoger of lager is dan de huidige kaart!");
+        }
+
+        function updateUI() {
+            document.getElementById('score-display').innerText = score;
+            document.getElementById('streak-display').innerText = streak;
+            document.getElementById('deck-count').innerText = deck.length + 1;
+
+            renderCardFace('current', currentCard);
+            renderCardFace('next', nextCard);
+        }
+
+        function renderCardFace(prefix, card) {
+            const topEl = document.getElementById(`${prefix}-top`);
+            const centerEl = document.getElementById(`${prefix}-center`);
+            const bottomEl = document.getElementById(`${prefix}-bottom`);
+
+            topEl.innerText = card.name;
+            topEl.className = `text-base md:text-lg leading-none font-extrabold ${card.color}`;
+            
+            centerEl.innerText = card.suit;
+            centerEl.className = `text-3xl md:text-4xl text-center self-center my-auto font-extrabold ${card.color}`;
+            
+            bottomEl.innerText = card.name;
+            bottomEl.className = `text-base md:text-lg leading-none self-end rotate-180 font-extrabold ${card.color}`;
+        }
+
+        function guess(playerChoice) {
+            if (!gameActive) return;
+            gameActive = false;
+
+            const cardInner = document.getElementById('card-inner-el');
+            cardInner.classList.remove('flip'); // Reveals front face
+
+            setTimeout(() => {
+                evaluateGuess(playerChoice);
+            }, 500);
+        }
+
+        function evaluateGuess(playerChoice) {
+            let isCorrect = false;
+
+            if (nextCard.value > currentCard.value) {
+                isCorrect = (playerChoice === 'higher');
+            } else if (nextCard.value < currentCard.value) {
+                isCorrect = (playerChoice === 'lower');
+            } else {
+                isCorrect = true; // Tie advantage
+                setMessage("Gelijkspel! Je krijgt een punt!");
+            }
+
+            if (isCorrect) {
+                score += 1;
+                streak += 1;
+                
+                if (deck.length === 0) {
+                    score *= 2;
+                    endGame(true, `GEFELICITEERD! Hele deck uitgespeeld! Score verdubbeld naar ${score}!`);
+                    return;
+                }
+
+                setMessage(`Juist! Het was een ${nextCard.name} ${nextCard.suit}. Ga door of stop!`);
+
+                currentCard = nextCard;
+                nextCard = deck.pop();
+
+                setTimeout(() => {
+                    const cardInner = document.getElementById('card-inner-el');
+                    cardInner.style.transition = 'none';
+                    cardInner.classList.add('flip');
+                    void cardInner.offsetWidth;
+                    cardInner.style.transition = 'transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1)';
+                    
+                    updateUI();
+                    gameActive = true;
+                }, 1000);
+
+            } else {
+                score = 0;
+                endGame(false, `FOUT! Het was een ${nextCard.name} ${nextCard.suit}. Al je punten zijn weg!`);
+            }
+        }
+
+        function setMessage(msg) {
+            const box = document.getElementById('message-box');
+            box.innerText = msg;
+            box.classList.add('scale-105', 'bg-slate-700');
+            setTimeout(() => {
+                box.classList.remove('scale-105', 'bg-slate-700');
+            }, 300);
+        }
+
+        function cashOut() {
+            if (!gameActive) return;
+            endGame(true, `Gestopt met ${score} punten veilig gesteld! Goed gedaan.`);
+        }
+
+        function endGame(won, message) {
+            gameActive = false;
+            setMessage(message);
+
+            const msgBox = document.getElementById('message-box');
+            if (won) {
+                msgBox.className = 'w-full bg-emerald-900/85 border border-emerald-500 rounded-lg py-2 px-3 mb-3 text-center text-xs md:text-sm font-extrabold text-emerald-300 shadow';
+            } else {
+                msgBox.className = 'w-full bg-rose-900/85 border border-rose-500 rounded-lg py-2 px-3 mb-3 text-center text-xs md:text-sm font-extrabold text-rose-300 shadow';
+            }
+
+            document.getElementById('controls-area').classList.add('hidden');
+            document.getElementById('restart-container').classList.remove('hidden');
+            document.getElementById('score-display').innerText = score;
+        }
+
+        window.onload = function() {
+            initGame();
+        };
+    </script>
+</body>
+</html>
