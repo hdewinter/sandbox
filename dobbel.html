@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Your Luck - Casino Vibe</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(135deg, #062b1b 0%, #0a1f17 100%);
+        }
+        @keyframes shake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(-10px, 5px) rotate(-10deg); }
+            40% { transform: translate(10px, -5px) rotate(10deg); }
+            60% { transform: translate(-5px, 5px) rotate(-5deg); }
+            80% { transform: translate(5px, -5px) rotate(5deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        .shake-animation { animation: shake 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-slate-950 p-4">
+
+    <!-- Top Bar with Back & Options -->
+    <header class="max-w-md w-full mx-auto flex items-center justify-between py-2">
+        <button onclick="app.returnToHome()" class="w-10 h-10 rounded-full bg-slate-900/40 border border-slate-700/40 flex items-center justify-center text-white hover:bg-slate-800 transition shadow-sm">
+            <i data-lucide="chevron-left" class="w-6 h-6"></i>
+        </button>
+        <div class="flex items-center space-x-2">
+            <button onclick="app.openModal('shop')" class="w-10 h-10 rounded-full bg-slate-900/40 border border-slate-700/40 flex items-center justify-center text-white hover:bg-slate-800 transition shadow-sm">
+                <i data-lucide="palette" class="w-5 h-5 text-amber-400"></i>
+            </button>
+            <button onclick="app.openModal('rules')" class="w-10 h-10 rounded-full bg-slate-900/40 border border-slate-700/40 flex items-center justify-center text-white hover:bg-slate-800 transition shadow-sm">
+                <i data-lucide="more-horizontal" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <main class="flex-1 max-w-md w-full mx-auto flex flex-col justify-center items-center py-2 space-y-4">
+
+        <!-- HomeScreen View -->
+        <div id="view-home" class="flex flex-col items-center justify-center text-center space-y-6 w-full">
+            <div class="text-center space-y-2">
+                <h1 class="text-3xl font-extrabold text-emerald-400 tracking-tight">Push Your Luck</h1>
+                <p class="text-xs text-slate-300 font-medium max-w-xs mx-auto">Gooi dobbelstenen, zet slim vast en behaal de hoogste score zonder alles te verliezen!</p>
+            </div>
+
+            <div class="w-full bg-[#0d221a]/90 border border-emerald-900/50 p-6 rounded-3xl shadow-2xl backdrop-blur-md space-y-5">
+                <div class="w-20 h-20 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center mx-auto text-emerald-400 shadow-inner">
+                    <i data-lucide="dices" class="w-10 h-10"></i>
+                </div>
+                
+                <div class="flex justify-around bg-slate-900/60 p-3 rounded-2xl border border-slate-800/80">
+                    <div class="text-center">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Munten</span>
+                        <span id="home-coins" class="text-sm font-extrabold text-amber-400">100</span>
+                    </div>
+                    <div class="w-px bg-slate-800"></div>
+                    <div class="text-center">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Modus</span>
+                        <span class="text-sm font-extrabold text-emerald-300">Solo 10 Beurten</span>
+                    </div>
+                </div>
+
+                <button onclick="app.startSoloGame()" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-extrabold rounded-2xl shadow-lg shadow-emerald-500/20 transform active:scale-95 transition flex items-center justify-center space-x-2 text-base">
+                    <i data-lucide="play" class="w-5 h-5 fill-slate-950"></i>
+                    <span>Start Spel</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- GameScreen View -->
+        <div id="view-game" class="hidden flex flex-col space-y-4 w-full">
+            
+            <!-- Title & Subtitle banner -->
+            <div class="text-center space-y-1">
+                <h2 class="text-2xl font-extrabold text-emerald-400 tracking-tight">Lock & Roll</h2>
+                <p id="game-subtitle" class="text-xs text-slate-300 font-medium">Klik op een dobbelsteen om deze vast te zetten!</p>
+            </div>
+
+            <!-- Main Game Dashboard Card -->
+            <div class="w-full bg-[#0d221a]/90 border border-emerald-900/50 p-5 rounded-3xl shadow-2xl backdrop-blur-md space-y-4">
+                
+                <!-- Top Stats Bar (Punten, Resterend, Streak) -->
+                <div class="grid grid-cols-3 gap-2 bg-slate-900/80 border border-slate-800/80 p-3 rounded-2xl text-center">
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Punten</span>
+                        <span id="game-total-score" class="text-base font-extrabold text-emerald-400">0</span>
+                    </div>
+                    <div class="border-x border-slate-800">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Beurt</span>
+                        <span id="game-turn" class="text-base font-extrabold text-amber-400">1 / 10</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Potentieel</span>
+                        <span id="game-turn-potential" class="text-base font-extrabold text-cyan-400">0</span>
+                    </div>
+                </div>
+
+                <!-- Status Message Banner Pill -->
+                <div id="status-banner" class="bg-slate-900/90 border border-slate-800/80 py-2.5 px-4 rounded-full text-center text-xs font-semibold text-slate-200 shadow-inner flex items-center justify-center space-x-2">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+                    <span id="status-text">Worpen over: 3. Kies je stenen of gooi opnieuw!</span>
+                </div>
+
+                <!-- Active Dice & Locked Containers Visual Box -->
+                <div class="space-y-3">
+                    <!-- Active Rolled Dice -->
+                    <div class="bg-slate-900/50 border border-slate-800/60 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[110px] relative">
+                        <span class="absolute top-2 left-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center space-x-1">
+                            <i data-lucide="dice-1" class="w-3 h-3 text-cyan-400"></i>
+                            <span>Actieve Stenen (Klik = Vastzetten)</span>
+                        </span>
+                        <div id="active-dice-container" class="flex flex-wrap items-center justify-center gap-3 mt-4">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Lock Holder Area -->
+                    <div class="bg-slate-900/50 border border-slate-800/60 rounded-2xl p-4 flex flex-col items-center justify-center min-h-[90px] relative">
+                        <span class="absolute top-2 left-3 text-[10px] font-bold text-amber-400 uppercase tracking-widest flex items-center space-x-1">
+                            <i data-lucide="lock" class="w-3 h-3 text-amber-400"></i>
+                            <span>Lock & Roll Houder</span>
+                        </span>
+                        <div id="locked-dice-container" class="flex flex-wrap items-center justify-center gap-3 mt-4">
+                            <span id="locked-empty-text" class="text-xs text-slate-500 italic">Nog geen stenen vastgezet</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Action Buttons (Matching Color Scheme: Orange/Amber, Green, Dark) -->
+                <div class="grid grid-cols-3 gap-2 pt-2">
+                    <button id="btn-cashout" onclick="app.cashOut()" class="py-3 px-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-extrabold rounded-2xl shadow-md transition flex flex-col items-center justify-center text-xs opacity-50 cursor-not-allowed" disabled>
+                        <i data-lucide="shield-check" class="w-4 h-4 mb-1"></i>
+                        <span>Stoppen</span>
+                    </button>
+                    <button id="btn-roll" onclick="app.rollDice()" class="py-3 px-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-extrabold rounded-2xl shadow-md transition flex flex-col items-center justify-center text-xs">
+                        <i data-lucide="rotate-cw" class="w-4 h-4 mb-1"></i>
+                        <span id="btn-roll-text">Gooi (3)</span>
+                    </button>
+                    <button onclick="app.resetTurnDice()" class="py-3 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-extrabold rounded-2xl shadow-md transition flex flex-col items-center justify-center text-xs">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mb-1"></i>
+                        <span>Reset</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GameOver Screen -->
+        <div id="view-gameover" class="hidden flex flex-col items-center justify-center text-center space-y-6 w-full">
+            <div class="w-full bg-[#0d221a]/90 border border-emerald-900/50 p-8 rounded-3xl shadow-2xl backdrop-blur-md space-y-4">
+                <div class="w-20 h-20 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center mx-auto text-emerald-400 shadow-inner">
+                    <i data-lucide="trophy" class="w-10 h-10"></i>
+                </div>
+                <h2 class="text-2xl font-extrabold text-white">Eindstand Bereikt!</h2>
+                
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl space-y-2 text-left">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-400">Totale Score:</span>
+                        <span id="final-score" class="text-xl font-extrabold text-emerald-400">0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-400">Verdiende Munten:</span>
+                        <span id="final-coins" class="text-lg font-extrabold text-amber-400">+0</span>
+                    </div>
+                </div>
+
+                <button onclick="app.returnToHome()" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-extrabold rounded-2xl shadow-lg transition flex items-center justify-center space-x-2 text-base">
+                    <i data-lucide="home" class="w-5 h-5"></i>
+                    <span>Terug naar Hoofdmenu</span>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Floating Navigation Bar -->
+    <footer class="max-w-md w-full mx-auto py-2 flex items-center justify-center">
+        <div class="bg-slate-900/80 backdrop-blur-md border border-slate-800 px-6 py-3 rounded-full shadow-lg flex items-center space-x-6 text-xs text-slate-400">
+            <span>Aas / Stenen = Actief</span>
+            <div class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+            <span>Push Your Luck</span>
+        </div>
+    </footer>
+
+    <!-- Modals (Shop, Rules, Message) -->
+    <div id="modal-shop" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-[#0d221a] border border-emerald-900/50 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative">
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-emerald-900/50">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="palette" class="w-5 h-5 text-amber-400"></i>
+                    <h3 class="text-base font-extrabold text-white">Dobbelsteen Skins</h3>
+                </div>
+                <button onclick="app.closeModal('shop')" class="p-2 text-slate-400 hover:text-white rounded-xl bg-slate-900 transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="shop-items-container" class="space-y-3 max-h-[60vh] overflow-y-auto">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-rules" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-[#0d221a] border border-emerald-900/50 rounded-3xl max-w-sm w-full p-6 shadow-2xl relative">
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-emerald-900/50">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="help-circle" class="w-5 h-5 text-emerald-400"></i>
+                    <h3 class="text-base font-extrabold text-white">Spelregels</h3>
+                </div>
+                <button onclick="app.closeModal('rules')" class="p-2 text-slate-400 hover:text-white rounded-xl bg-slate-900 transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                <p><strong>1. Doel:</strong> Scoor na 10 beurten de meeste punten.</p>
+                <p><strong>2. Worpen:</strong> Je hebt 3 worpen per beurt. Klik op stenen om ze vast te zetten in de houder.</p>
+                <p><strong>3. Verzilveren:</strong> Stop op tijd om je punten veilig te stellen in je totaal!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Modal (Replaces alert) -->
+    <div id="modal-message" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-[#0d221a] border border-emerald-900/50 rounded-3xl max-w-xs w-full p-6 shadow-2xl text-center space-y-4">
+            <div id="msg-icon" class="w-14 h-14 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto text-amber-400">
+                <i data-lucide="alert-triangle" class="w-7 h-7"></i>
+            </div>
+            <h3 id="msg-title" class="text-lg font-extrabold text-white">Melding</h3>
+            <p id="msg-text" class="text-xs text-slate-300"></p>
+            <button onclick="app.closeMessageModal()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-slate-950 font-extrabold rounded-xl shadow-md transition text-xs">Begrepen</button>
+        </div>
+    </div>
+
+    <script>
+        class PushYourLuckGame {
+            constructor() {
+                this.coins = parseInt(localStorage.getItem('pyl_coins')) || 100;
+                this.unlockedSkins = JSON.parse(localStorage.getItem('pyl_skins')) || ['classic'];
+                this.currentSkin = localStorage.getItem('pyl_current_skin') || 'classic';
+
+                this.turn = 1;
+                this.maxTurns = 10;
+                this.rollCount = 0;
+                this.maxRolls = 3;
+                this.totalScore = 0;
+                this.turnPotential = 0;
+
+                this.dice = [
+                    { id: 1, value: 1, locked: false },
+                    { id: 2, value: 1, locked: false },
+                    { id: 3, value: 1, locked: false },
+                    { id: 4, value: 1, locked: false },
+                    { id: 5, value: 1, locked: false }
+                ];
+
+                this.skins = [
+                    { id: 'classic', name: 'Klassiek Wit', price: 0, bg: 'bg-slate-100 text-slate-900 border-slate-300' },
+                    { id: 'neon', name: 'Neon Cyberpunk', price: 150, bg: 'bg-cyan-950 text-cyan-300 border-cyan-500' },
+                    { id: 'gold', name: 'Gouden Luxe', price: 300, bg: 'bg-amber-950 text-amber-300 border-amber-500' },
+                    { id: 'wood', name: 'Rustiek Hout', price: 500, bg: 'bg-stone-900 text-stone-200 border-stone-700' }
+                ];
+
+                this.init();
+            }
+
+            init() {
+                this.updateHeaderCoins();
+                lucide.createIcons();
+            }
+
+            updateHeaderCoins() {
+                document.getElementById('home-coins').textContent = this.coins;
+                localStorage.setItem('pyl_coins', this.coins);
+                localStorage.setItem('pyl_skins', JSON.stringify(this.unlockedSkins));
+                localStorage.setItem('pyl_current_skin', this.currentSkin);
+            }
+
+            showMessage(title, text, type = 'warning') {
+                document.getElementById('msg-title').textContent = title;
+                document.getElementById('msg-text').textContent = text;
+                const iconContainer = document.getElementById('msg-icon');
+                
+                if (type === 'success') {
+                    iconContainer.className = 'w-14 h-14 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center mx-auto text-emerald-400';
+                    iconContainer.innerHTML = '<i data-lucide="check-circle" class="w-7 h-7"></i>';
+                } else {
+                    iconContainer.className = 'w-14 h-14 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto text-amber-400';
+                    iconContainer.innerHTML = '<i data-lucide="alert-triangle" class="w-7 h-7"></i>';
+                }
+                
+                document.getElementById('modal-message').classList.remove('hidden');
+                lucide.createIcons();
+            }
+
+            closeMessageModal() {
+                document.getElementById('modal-message').classList.add('hidden');
+            }
+
+            openModal(modalId) {
+                if (modalId === 'shop') this.renderShop();
+                document.getElementById(`modal-${modalId}`).classList.remove('hidden');
+                lucide.createIcons();
+            }
+
+            closeModal(modalId) {
+                document.getElementById(`modal-${modalId}`).classList.add('hidden');
+            }
+
+            startSoloGame() {
+                this.turn = 1;
+                this.totalScore = 0;
+                this.startNewTurn();
+
+                document.getElementById('view-home').classList.add('hidden');
+                document.getElementById('view-gameover').classList.add('hidden');
+                document.getElementById('view-game').classList.remove('hidden');
+            }
+
+            startNewTurn() {
+                this.rollCount = 0;
+                this.dice.forEach(d => {
+                    d.locked = false;
+                    d.value = Math.floor(Math.random() * 6) + 1;
+                });
+                this.calculatePotential();
+                this.updateUI();
+            }
+
+            resetTurnDice() {
+                this.dice.forEach(d => {
+                    d.locked = false;
+                });
+                this.calculatePotential();
+                this.updateUI();
+            }
+
+            rollDice() {
+                if (this.rollCount >= this.maxRolls) return;
+
+                if (navigator.vibrate) navigator.vibrate(50);
+                
+                const container = document.getElementById('active-dice-container');
+                container.classList.add('shake-animation');
+                setTimeout(() => container.classList.remove('shake-animation'), 500);
+
+                this.rollCount++;
+                this.dice.forEach(d => {
+                    if (!d.locked) {
+                        d.value = Math.floor(Math.random() * 6) + 1;
+                    }
+                });
+
+                this.calculatePotential();
+                this.updateUI();
+            }
+
+            toggleLock(id) {
+                if (this.rollCount === 0) {
+                    this.showMessage('Wacht!', 'Gooi eerst de dobbelstenen voordat je stenen vastzet.');
+                    return;
+                }
+
+                const die = this.dice.find(d => d.id === id);
+                if (die) {
+                    die.locked = !die.locked;
+                    if (navigator.vibrate) navigator.vibrate(30);
+                    this.calculatePotential();
+                    this.updateUI();
+                }
+            }
+
+            calculatePotential() {
+                let sum = 0;
+                this.dice.forEach(d => {
+                    if (d.locked) sum += d.value;
+                });
+                this.turnPotential = sum;
+            }
+
+            cashOut() {
+                if (this.turnPotential === 0 && this.rollCount > 0) {
+                    this.showMessage('Geen Punten', 'Je hebt geen dobbelstenen vastgezet om te verzilveren!');
+                    return;
+                }
+
+                this.totalScore += this.turnPotential;
+                this.showMessage('Punten Verzilverd!', `Je hebt ${this.turnPotential} punten toegevoegd aan je totaal!`, 'success');
+                
+                this.nextTurnOrEnd();
+            }
+
+            nextTurnOrEnd() {
+                this.turn++;
+                if (this.turn > this.maxTurns) {
+                    this.endGame();
+                } else {
+                    this.startNewTurn();
+                }
+            }
+
+            endGame() {
+                document.getElementById('view-game').classList.add('hidden');
+                document.getElementById('view-gameover').classList.remove('hidden');
+
+                document.getElementById('final-score').textContent = this.totalScore;
+                const earnedCoins = Math.floor(this.totalScore / 10);
+                document.getElementById('final-coins').textContent = `+${earnedCoins}`;
+                
+                this.coins += earnedCoins;
+                this.updateHeaderCoins();
+            }
+
+            returnToHome() {
+                document.getElementById('view-game').classList.add('hidden');
+                document.getElementById('view-gameover').classList.add('hidden');
+                document.getElementById('view-home').classList.remove('hidden');
+            }
+
+            updateUI() {
+                document.getElementById('game-turn').textContent = `${this.turn} / ${this.maxTurns}`;
+                document.getElementById('game-total-score').textContent = this.totalScore;
+                document.getElementById('game-turn-potential').textContent = this.turnPotential;
+
+                const statusText = document.getElementById('status-text');
+                const rollBtnText = document.getElementById('btn-roll-text');
+                const rollBtn = document.getElementById('btn-roll');
+                const cashBtn = document.getElementById('btn-cashout');
+
+                if (this.rollCount === 0) {
+                    statusText.textContent = 'Begin je beurt! Klik op gooi.';
+                    rollBtnText.textContent = 'Gooi (3)';
+                    rollBtn.disabled = false;
+                    rollBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    cashBtn.disabled = true;
+                    cashBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else if (this.rollCount < this.maxRolls) {
+                    statusText.textContent = `Worpen over: ${this.maxRolls - this.rollCount}. Zet vast of gooi opnieuw!`;
+                    rollBtnText.textContent = `Opnieuw (${this.maxRolls - this.rollCount})`;
+                    rollBtn.disabled = false;
+                    rollBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    cashBtn.disabled = false;
+                    cashBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    statusText.textContent = 'Laatste worp verbruikt! Verzilver je punten.';
+                    rollBtnText.textContent = 'Geen worpen';
+                    rollBtn.disabled = true;
+                    rollBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    cashBtn.disabled = false;
+                    cashBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+
+                const activeContainer = document.getElementById('active-dice-container');
+                const lockedContainer = document.getElementById('locked-dice-container');
+                
+                activeContainer.innerHTML = '';
+                lockedContainer.innerHTML = '';
+
+                let lockedCount = 0;
+                const activeSkinObj = this.skins.find(s => s.id === this.currentSkin) || this.skins[0];
+
+                this.dice.forEach(d => {
+                    const dieEl = document.createElement('button');
+                    dieEl.className = `w-12 h-12 rounded-xl flex items-center justify-center text-xl font-extrabold shadow-md border-2 transition transform active:scale-95 ${activeSkinObj.bg}`;
+                    dieEl.textContent = d.value;
+
+                    if (!d.locked) {
+                        dieEl.onclick = () => this.toggleLock(d.id);
+                        activeContainer.appendChild(dieEl);
+                    } else {
+                        lockedCount++;
+                        dieEl.onclick = () => this.toggleLock(d.id);
+                        lockedContainer.appendChild(dieEl);
+                    }
+                });
+
+                if (lockedCount === 0) {
+                    lockedContainer.innerHTML = '<span id="locked-empty-text" class="text-xs text-slate-500 italic">Nog geen stenen vastgezet</span>';
+                }
+
+                lucide.createIcons();
+            }
+
+            renderShop() {
+                const container = document.getElementById('shop-items-container');
+                container.innerHTML = '';
+
+                this.skins.forEach(skin => {
+                    const isUnlocked = this.unlockedSkins.includes(skin.id);
+                    const isSelected = this.currentSkin === skin.id;
+
+                    const itemEl = document.createElement('div');
+                    itemEl.className = `p-3 rounded-2xl border flex items-center justify-between ${isSelected ? 'bg-emerald-500/10 border-emerald-500/50' : 'bg-slate-900/60 border-slate-800'}`;
+                    
+                    itemEl.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold border ${skin.bg}">⚅</div>
+                            <div>
+                                <h4 class="font-extrabold text-white text-xs">${skin.name}</h4>
+                                <p class="text-[10px] text-slate-400">${isUnlocked ? 'Ontgrendeld' : skin.price + ' munten'}</p>
+                            </div>
+                        </div>
+                        <div>
+                            ${isSelected ? '<span class="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/30">Actief</span>' : 
+                              isUnlocked ? `<button onclick="app.selectSkin('${skin.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold rounded-xl transition">Gebruik</button>` :
+                              `<button onclick="app.buySkin('${skin.id}', ${skin.price})" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-extrabold rounded-xl transition shadow-md">Kopen</button>`}
+                        </div>
+                    `;
+                    container.appendChild(itemEl);
+                });
+            }
+
+            buySkin(skinId, price) {
+                if (this.coins < price) {
+                    this.showMessage('Te weinig munten', 'Je hebt niet genoeg munten om deze skin te ontgrendelen!');
+                    return;
+                }
+                this.coins -= price;
+                this.unlockedSkins.push(skinId);
+                this.currentSkin = skinId;
+                this.updateHeaderCoins();
+                this.renderShop();
+                this.updateUI();
+                this.showMessage('Gefeliciteerd!', 'Nieuwe skin ontgrendeld!', 'success');
+            }
+
+            selectSkin(skinId) {
+                this.currentSkin = skinId;
+                this.updateHeaderCoins();
+                this.renderShop();
+                this.updateUI();
+            }
+        }
+
+        const app = new PushYourLuckGame();
+    </script>
+</body>
+</html>
